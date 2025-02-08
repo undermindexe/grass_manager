@@ -1,6 +1,7 @@
 The GRASS account manager
 
 Registration, Verification, and Parsing
+![Main window](https://i.imgur.com/11d7TXq.png)
 
 Install:
 pip install -r requirements.txt
@@ -22,6 +23,7 @@ For contact - https://t.me/UnderMindExe
 Менеджер аккаунтов GRASS
 
 Регистрация, Верификация, Парсинг
+![Главный экран](https://i.imgur.com/11d7TXq.png)
 
 Установка:
 pip install -r requirements.txt
