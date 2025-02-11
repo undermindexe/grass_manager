@@ -45,10 +45,6 @@ async def export_acc(database, file_name: str, export_type: str = 'excel', form:
         df.to_excel(f'{file_name}.xlsx', index=False, engine='openpyxl')
 
     if export_type == 'txt':
-
-        if separator not in form:
-            logger.error(f'Error separator or format')
-            return
         
         keys = form.split(separator)
 
@@ -61,7 +57,10 @@ async def export_acc(database, file_name: str, export_type: str = 'excel', form:
         list_string = []
         for acc in list_accs:
             data = [acc.get(key, '') if acc.get(key, '') != None else 'None' for key in keys]
-            string = separator.join(data)
+            if len(data) > 1:
+                string = separator.join(data)
+            else:
+                string = data[0]
             string += '\n'
             list_string.append(string)
 

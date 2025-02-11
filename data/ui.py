@@ -157,7 +157,7 @@ class MyInterface(App):
             self.container.mount(Horizontal(self.panel_links(),
                                             Vertical(
                                                 Static("Добавить imap данные", classes="title"),
-                                                InfoInput(placeholder='Accounts file path. Default: accounts.txt', type='text', id='accounts'),
+                                                InfoInput(placeholder='Accounts file path', type='text', id='accounts'),
                                                 InfoInput(placeholder='Fixed imap for all acc', type='text', id='imap'),
                                                 Button('ЗАПУСК', id='start_imap', classes="button"), 
                                                 Button('НАЗАД', id='back', classes="button"),
