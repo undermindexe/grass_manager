@@ -462,6 +462,16 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error verification {e}')
             raise e
 
+    async def get_proxy(self):
+        while True:
+            proxy = await self.proxymanager.get()
+            if proxy.link != 'not_available_proxy:1111':
+                self.proxy = proxy
+                break
+            else:
+                logger.info(f'{self.email} | No available proxies. Sleep 20 second')
+                await asyncio.sleep(20)
+
     async def wallet_verification(self):
         try:
             logger.info(f'{self.email} | Start wallet verification')
@@ -483,7 +493,7 @@ class Grass(Browser, Account, Wallet):
         except Exception as e:
             logger.error(f'{self.email} | Error verification {e}')
             raise e
- 
+
 def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.txt'):
     list_accounts = []
     with open(accounts, 'r', encoding= 'utf-8') as file:
@@ -546,8 +556,9 @@ async def search_acc_db(account: Grass):
 async def worker_reg(account: Grass):
     try:
         async with semaphore:
-            account.proxy = await account.proxymanager.get()
-            logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')  # Отработать если аккаунт уже есть в бд, и если аккаунт существует в грасс
+            await account.get_proxy()
+            #account.proxy = await account.proxymanager.get()
+            logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
             if await search_acc_db(account):
                 logger.info(f'{account.email} | Available in the database. Update info')
                 if await account.validate_session():
@@ -576,18 +587,18 @@ async def worker_reg(account: Grass):
 async def worker_update(account: Grass):
     try:
         async with semaphore:
-            account.proxy = await account.proxymanager.get()
+            await account.get_proxy()
             logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
             if await account.validate_session():
                 await account.update_info()
                 await account.proxymanager.drop(account.proxy)
     except RetryError:
-        logger.error(f'{account.email} | Registration | Retry Error')
+        logger.error(f'{account.email} | Update | Retry Error')
 
 async def worker_verif(account: Grass):
     try:
         async with semaphore:
-            account.proxy = await account.proxymanager.get()
+            await account.get_proxy()
             logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
             if await account.validate_session():
                 await account.update_info()
@@ -598,7 +609,7 @@ async def worker_verif(account: Grass):
                 await account.update_info()
                 await account.proxymanager.drop(account.proxy)
     except RetryError:
-        logger.error(f'{account.email} | Registration | Retry Error')
+        logger.error(f'{account.email} | Verification | Retry Error')
 
 async def worker_import(account: Grass):
     try:

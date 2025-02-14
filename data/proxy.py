@@ -39,6 +39,8 @@ class ProxyManager:
     async def drop(self, proxy):
         proxy.status = False
         proxy.last_touch = datetime.now()
+        self.proxies.remove(proxy)
+        self.proxies.append(proxy)
 
     @staticmethod
     async def check_time(last_touch: datetime, rotate: int):
