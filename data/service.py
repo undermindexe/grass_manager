@@ -6,6 +6,7 @@ import string
 from logger import logger
 from fake_useragent import UserAgent
 
+USER_AGENTS = []
 
 
 def validate_email(email: str):
@@ -27,7 +28,13 @@ def generate_pass():
     return ''.join(password)
 
 def get_user_agent():
-    return UserAgent('Chrome', 'Windows', 126.0, 0.0, 'desktop').random
+    if USER_AGENTS:
+        return random.choice(USER_AGENTS)
+    else:
+        logger.info(f'Generate user-agent list')
+        for _ in range(300):
+            USER_AGENTS.append(UserAgent('Chrome', 'Windows', 129.0, 0.0, 'desktop').random)
+        return random.choice(USER_AGENTS)
 
 def get_random_mail(n):
     list_acc = []
