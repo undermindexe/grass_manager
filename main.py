@@ -49,7 +49,7 @@ class Grass(Browser, Account, Wallet):
         self.error = 0
 
     @retry(
-            stop = stop_after_attempt(6),
+            stop = stop_after_attempt(4),
             retry = (retry_if_exception_type(RegistrationError)),
             wait = wait_random(5,7)
     )
@@ -86,7 +86,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error registration | {e}')
             self.error += 1
             if self.error > 2:
-                self.proxy = await self.swap_proxy()
+                await self.swap_proxy()
                 self.error = 0
             raise RegistrationError()
         finally:
@@ -126,7 +126,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error login | {e}')
             self.error += 1
             if self.error > 3:
-                self.proxy = await self.swap_proxy()
+                await self.swap_proxy()
                 logger.info(f'{self.email} | New proxy: {self.proxy.link}') 
                 self.error = 0
             raise LoginError('Login error')
@@ -157,14 +157,16 @@ class Grass(Browser, Account, Wallet):
             await self.db.close()
 
     @retry(
-            stop = stop_after_attempt(15),
+            stop = stop_after_attempt(6),
             retry = (retry_if_exception_type(UpdateError)),
             wait = wait_random(5,7)
     )
     async def update_info(self):
         try:
+            logger.info(f'{self.email} | Start update info')
             await self.open_session()
             async with self.session.get(url = self.url['retrieveUser'], headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}") as response:
+                logger.debug(f'{self.email} | Response status: {response.status}')
                 if response.status == 200:
                     retrieveUser = await response.json()
                     self.referal_code = retrieveUser['result']['data']['referralCode']
@@ -180,7 +182,7 @@ class Grass(Browser, Account, Wallet):
                     self.userrole = retrieveUser['result']['data']['userRole']
                     self.totalpoints = retrieveUser['result']['data']['totalPoints']
                     self.parent_referrals = ','.join(retrieveUser['result']['data']['parentReferrals'])
-
+                    logger.info(f'{self.email} | Success get user info')
                     await self.save_info()
                     return True
                 else:
@@ -191,8 +193,8 @@ class Grass(Browser, Account, Wallet):
                 await self.session.close()
             logger.error(f'{self.email} | Error update info | {e}')
             self.error += 1
-            if self.error > 3:
-                self.proxy = await self.swap_proxy()
+            if self.error > 2:
+                await self.swap_proxy()
                 self.error = 0
             raise UpdateError('Update info error')
         finally:
@@ -280,7 +282,7 @@ class Grass(Browser, Account, Wallet):
     async def error_stat(self):
         self.error += 1
         if self.error > 3:
-            self.proxy = await self.swap_proxy()
+            await self.swap_proxy()
             self.error = 0
 
     @retry(
@@ -563,7 +565,6 @@ async def worker_reg(account: Grass):
                 logger.info(f'{account.email} | Account in the database | SKIP')
             else:
                 await account.get_proxy()
-                logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
                 if await account.register():
                     await account.save_account()
                     if await account.validate_session():
@@ -575,6 +576,8 @@ async def worker_reg(account: Grass):
                 await account.session.close()  
     except RetryError:
         logger.error(f'{account.email} | Registration | Retry Error')
+    except Exception as e:
+        print(f'{e}')
     finally:
         await account.db.close()
         if not account.session.closed:

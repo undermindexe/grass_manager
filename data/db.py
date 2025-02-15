@@ -56,5 +56,6 @@ class DataBase:
         await self.connection.commit()
 
     async def close(self):
-        await self.cursor.close()
-        await self.connection.close()
+        if self.connection._connection != None:
+            await self.cursor.close()
+            await self.connection.close()
