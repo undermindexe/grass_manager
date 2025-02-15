@@ -7,7 +7,6 @@ class Proxy:
         self.status = False
         self.last_ip = None
         self.last_touch = None
-        self.errors = 0
 
 
 class ProxyManager:
@@ -18,23 +17,14 @@ class ProxyManager:
     async def get(self):
         try:
             for i in self.proxies:
-                if i.status == False and (i.last_touch == None or await ProxyManager.check_time(i.last_touch, self.rotation_time)) and i.errors <= 3:
+                if i.status == False and (i.last_touch == None or await ProxyManager.check_time(i.last_touch, self.rotation_time)):
                     proxy = i
                     proxy.status = True
                     return proxy
-                else:
-                    None
             return Proxy('not_available_proxy:1111')
         except Exception as e:
             print(f'{e}')
             raise e
-
-    
-    async def swap(self, proxy):
-        proxy.status = False
-        proxy.last_touch = datetime.now()
-        proxy.errors += 1
-        return await self.get()
 
     async def drop(self, proxy):
         proxy.status = False

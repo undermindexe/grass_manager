@@ -76,9 +76,6 @@ class Grass(Browser, Account, Wallet):
                     return True
                 else:
                     logger.info(f'{self.email} | Account not created | Status: {response.status}')
-                    if await self.login():
-                        logger.info(f'{self.email} | Account already exists | Status: {response.status}')
-                        return True
                     raise RegistrationError()
         except RetryError:
             logger.error(f'{self.email} | Registration | Retry Error')
@@ -89,7 +86,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error registration | {e}')
             self.error += 1
             if self.error > 2:
-                self.proxy = await self.proxymanager.swap(self.proxy)
+                self.proxy = await self.swap_proxy()
                 self.error = 0
             raise RegistrationError()
         finally:
@@ -129,7 +126,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error login | {e}')
             self.error += 1
             if self.error > 3:
-                self.proxy = await self.proxymanager.swap(self.proxy)
+                self.proxy = await self.swap_proxy()
                 logger.info(f'{self.email} | New proxy: {self.proxy.link}') 
                 self.error = 0
             raise LoginError('Login error')
@@ -195,7 +192,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error update info | {e}')
             self.error += 1
             if self.error > 3:
-                self.proxy = await self.proxymanager.swap(self.proxy) 
+                self.proxy = await self.swap_proxy()
                 self.error = 0
             raise UpdateError('Update info error')
         finally:
@@ -283,7 +280,7 @@ class Grass(Browser, Account, Wallet):
     async def error_stat(self):
         self.error += 1
         if self.error > 3:
-            self.proxy = await self.proxymanager.swap(self.proxy) 
+            self.proxy = await self.swap_proxy()
             self.error = 0
 
     @retry(
@@ -462,7 +459,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error verification {e}')
             raise e
 
-    async def get_proxy(self):
+    async def get_proxy(self):  # Обернуть get в логику get proxy
         while True:
             proxy = await self.proxymanager.get()
             if proxy.link != 'not_available_proxy:1111':
@@ -471,6 +468,11 @@ class Grass(Browser, Account, Wallet):
             else:
                 logger.info(f'{self.email} | No available proxies. Sleep 20 second')
                 await asyncio.sleep(20)
+
+    async def swap_proxy(self):
+        self.proxy.status = False
+        self.proxy.last_touch = datetime.now()
+        return await self.get_proxy()
 
     async def wallet_verification(self):
         try:
@@ -548,10 +550,10 @@ async def search_acc_db(account: Grass):
     if result:
         account.__dict__.update(result)
         logger.info(f'{account.email} | Account was found in db | Password: {account.password}')
-        database.close()
+        await database.close()
         return True
     else:
-        database.close()
+        await database.close()
         return False
 
 async def worker_reg(account: Grass):
@@ -573,7 +575,11 @@ async def worker_reg(account: Grass):
                 await account.session.close()  
     except RetryError:
         logger.error(f'{account.email} | Registration | Retry Error')
-
+    finally:
+        await account.db.close()
+        if not account.session.closed:
+            await account.session.close()
+            
 async def worker_update(account: Grass):
     try:
         async with semaphore:
@@ -584,6 +590,10 @@ async def worker_update(account: Grass):
             await account.proxymanager.drop(account.proxy)
     except RetryError:
         logger.error(f'{account.email} | Update | Retry Error')
+    finally:
+        await account.db.close()
+        if not account.session.closed:
+            await account.session.close()
 
 async def worker_verif(account: Grass):
     try:
@@ -600,6 +610,10 @@ async def worker_verif(account: Grass):
             await account.proxymanager.drop(account.proxy)
     except RetryError:
         logger.error(f'{account.email} | Verification | Retry Error')
+    finally:
+        await account.db.close()
+        if not account.session.closed:
+            await account.session.close()
 
 async def worker_import(account: Grass):
     try:
