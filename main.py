@@ -601,16 +601,19 @@ async def worker_update(account: Grass):
 async def worker_verif(account: Grass):
     try:
         async with semaphore:
-            await account.get_proxy()
-            logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
-            if await account.validate_session():
-                await account.update_info()
-                if account.verified == False:
-                    await account.email_verification(subject='"Verify Your Email for Grass"')
-                if account.verified == True and account.wallet_verified == False:
-                    await account.wallet_verification()
-                await account.update_info()
-            await account.proxymanager.drop(account.proxy)
+            if account.verified == True and account.wallet_verified == True:
+                logger.info(f'{account.email} | Account already verified | SKIP')
+            else:
+                await account.get_proxy()
+                logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
+                if await account.validate_session():
+                    await account.update_info()
+                    if account.verified == False:
+                        await account.email_verification(subject='"Verify Your Email for Grass"')
+                    if account.verified == True and account.wallet_verified == False:
+                        await account.wallet_verification()
+                    await account.update_info()
+                await account.proxymanager.drop(account.proxy)
     except RetryError:
         logger.error(f'{account.email} | Verification | Retry Error')
     finally:
@@ -659,6 +662,7 @@ async def main(new_args = None):
 
         elif args.action == 'imap':
             await add_email_pass(DataBase(), args.imap , args.accounts)
+            logger.info(f'All imap info added')
 
         elif args.action == 'import':
             list_dicts = await import_acc(file_name = args.file_name, separator = args.separator, form = args.format)
