@@ -21,38 +21,42 @@ class DataBase:
 
     async def validate_table(self):
         await self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Accounts(
-        id INTEGER PRIMARY KEY,
-        email TEXT NOT NULL,
-        email_password TEXT,
-        imap_domain TEXT,
-        username TEXT,
-        password TEXT NOT NULL,
-        access_token TEXT,
-        refresh_token TEXT,
-        access_token_create_time DATETIME,
-        user_agent TEXT,
-        ref_reg TEXT,
-        userid TEXT,
-        userrole TEXT,
-        referal_code TEXT,
-        entity TEXT,
-        created DATETIME,
-        verified BOOLEAN,
-        wallet_verified BOOLEAN,
-        reward_claimed TEXT,
-        modified TEXT,
-        refferals INTEGER,
-        qualified_refferals INTEGER,
-        totalpoints INTEGER,
-        tokens INTEGER,
-        parent_referrals TEXT,
-        wallet TEXT,
-        private_key TEXT,
-        seed TEXT
+            CREATE TABLE IF NOT EXISTS Accounts(
+            id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL,
+            email_password TEXT,
+            imap_domain TEXT,
+            username TEXT,
+            password TEXT NOT NULL,
+            access_token TEXT,
+            refresh_token TEXT,
+            access_token_create_time DATETIME,
+            user_agent TEXT,
+            ref_reg TEXT,
+            userid TEXT,
+            userrole TEXT,
+            referal_code TEXT,
+            entity TEXT,
+            created DATETIME,
+            verified BOOLEAN,
+            wallet_verified BOOLEAN,
+            reward_claimed TEXT,
+            modified TEXT,
+            refferals INTEGER,
+            qualified_refferals INTEGER,
+            totalpoints INTEGER,
+            tokens INTEGER,
+            parent_referrals TEXT,
+            wallet TEXT,
+            private_key TEXT,
+            seed TEXT
         )
         ''')
+        await self.connection.commit()
 
+        await self.cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_email ON Accounts(email)
+        ''')
         await self.connection.commit()
 
     async def close(self):

@@ -99,7 +99,7 @@ async def add_email_pass(database, fixed_imap: str = None, path: str = 'accounts
                         logger.info(f'{email} | Add {email_pass} and {imap_domain}')
 
                         if len(updates) >= batch_size:
-                            logger.info(f'Writing {len(updates)} to the database. Wait please')
+                            logger.info(f'Writing {len(updates)} to the database')
                             await db.executemany('''
                             UPDATE Accounts
                             SET email_password = ?, imap_domain = ?
@@ -108,7 +108,7 @@ async def add_email_pass(database, fixed_imap: str = None, path: str = 'accounts
                             await db.commit()
                             updates.clear()
         if updates:
-            logger.info(f'Writing {len(updates)} to the database. Wait please')
+            logger.info(f'Writing {len(updates)} to the database')
             await db.executemany('''
             UPDATE Accounts
             SET email_password = ?, imap_domain = ?
