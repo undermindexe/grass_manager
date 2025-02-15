@@ -80,22 +80,47 @@ def generate_random_email(num, path):
         file.writelines(list_emails)
 
 async def add_email_pass(database, fixed_imap: str = None, path: str = 'accounts.txt'):
-    with open(path, 'r', encoding='utf-8') as file:
-        for string in file.readlines():
-            string = string.strip()
-            if ':' in string:
-                string = tuple(string.split(':'))
-                if validate_email(string[0]) and (len(string) == 2 or len(string) == 3):
-                    email = string[0]
-                    email_pass = string[1]
-                    imap_domain = string[2] if len(string) == 3 else fixed_imap if fixed_imap else None
-                    db = await database.connect()
-                    await db.execute('''
-                    UPDATE Accounts
-                    SET email_password = ?, imap_domain = ?
-                    WHERE email = ?
-                    ''', (email_pass, imap_domain, email))
-                    await db.commit()
-                    logger.info(f'{email} | Add email password {email_pass}')
+    try:
+        db = await database.connect()
+        await db.execute('PRAGMA journal_mode=WAL;')
+        batch_size = 1000
+        updates = []
+
+        with open(path, 'r', encoding='utf-8') as file:
+            for string in file.readlines():
+                string = string.strip()
+                if ':' in string:
+                    string = tuple(string.split(':'))
+                    if validate_email(string[0]) and (len(string) == 2 or len(string) == 3):
+                        email = string[0]
+                        email_pass = string[1]
+                        imap_domain = string[2] if len(string) == 3 else fixed_imap if fixed_imap else None
+                        updates.append((email_pass, imap_domain, email))
+                        logger.info(f'{email} | Add {email_pass} and {imap_domain}')
+
+                        if len(updates) >= batch_size:
+                            logger.info(f'Writing {len(updates)} to the database. Wait please')
+                            await db.executemany('''
+                            UPDATE Accounts
+                            SET email_password = ?, imap_domain = ?
+                            WHERE email = ?
+                            ''', updates)
+                            await db.commit()
+                            updates.clear()
+        if updates:
+            logger.info(f'Writing {len(updates)} to the database. Wait please')
+            await db.executemany('''
+            UPDATE Accounts
+            SET email_password = ?, imap_domain = ?
+            WHERE email = ?
+            ''', updates)
+            await db.commit()
+            updates.clear()
+
+    except Exception as e:
+        print(e)
+    finally:
+        await db.close()
+
 
 
