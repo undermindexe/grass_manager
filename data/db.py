@@ -2,25 +2,17 @@ import asyncio
 import aiosqlite
 
 class DataBase:
+    _connection = None
+    _lock = asyncio.Lock()
 
-    def __init__(self, path: str = 'database.db'):
-        self.path = path
+    @classmethod
+    async def get_connection(cls):
+        if cls._connection is None:
+            cls._connection = await aiosqlite.connect('database.db')
+        await cls._connection.execute('PRAGMA journal_mode=WAL;')
+        await cls._connection.commit()
 
-        self.cursor = None
-        self.connection = None
-        self._row = aiosqlite.Row
-
-
-
-
-    async def connect(self):
-        self.connection = await aiosqlite.connect(self.path)
-        self.cursor = await self.connection.cursor()
-        await self.validate_table()
-        return self.connection
-
-    async def validate_table(self):
-        await self.cursor.execute('''
+        await cls._connection.execute('''
             CREATE TABLE IF NOT EXISTS Accounts(
             id INTEGER PRIMARY KEY,
             email TEXT NOT NULL,
@@ -52,14 +44,57 @@ class DataBase:
             seed TEXT
         )
         ''')
-        await self.connection.commit()
+        await cls._connection.commit()
 
-        await self.cursor.execute('''
+        await cls._connection.execute('''
             CREATE INDEX IF NOT EXISTS idx_email ON Accounts(email)
         ''')
-        await self.connection.commit()
+        await cls._connection.commit()
 
-    async def close(self):
-        if self.connection._connection != None:
-            await self.cursor.close()
-            await self.connection.close()
+        return cls._connection
+
+    @classmethod
+    async def execute(cls, query, params = ()):
+        async with cls._lock:
+            conn = await cls.get_connection()
+            await conn.execute(query, params)
+            await conn.commit()
+
+    @classmethod
+    async def executemany(cls, query, params = ()):
+        async with cls._lock:
+            conn = await cls.get_connection()
+            await conn.executemany(query, params)
+            await conn.commit()
+
+    @classmethod
+    async def query(cls, query, params = (), description = False):
+        async with cls._lock:
+            conn = await cls.get_connection()
+            async with conn.execute(query, params) as cursor:
+                result = await cursor.fetchall()
+                if description:
+                    return result, cursor.description
+        return result
+    
+    @classmethod
+    async def query_custom_row(cls, query, params = (), one = False):
+        async with cls._lock:
+            conn = await cls.get_connection()
+            default_row_factory = conn.row_factory
+            conn.row_factory = aiosqlite.Row
+            if one:
+                async with conn.execute(query, params) as cursor:
+                    result = await cursor.fetchone()
+            else:
+                async with conn.execute(query, params) as cursor:
+                    result = await cursor.fetchall()
+            conn.row_factory = default_row_factory
+        return result
+
+
+    @classmethod
+    async def close_connection(cls):
+        if cls._connection:
+            await cls._connection.close()
+            cls._connection = None

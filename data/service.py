@@ -79,13 +79,10 @@ def generate_random_email(num, path):
     with open(path, 'w+', encoding='utf-8') as file:
         file.writelines(list_emails)
 
-async def add_email_pass(database, fixed_imap: str = None, path: str = 'accounts.txt'):
+async def add_email_pass(db, fixed_imap: str = None, path: str = 'accounts.txt'):
     try:
-        db = await database.connect()
-        await db.execute('PRAGMA journal_mode=WAL;')
         batch_size = 1000
         updates = []
-
         with open(path, 'r', encoding='utf-8') as file:
             for string in file.readlines():
                 string = string.strip()
@@ -105,7 +102,6 @@ async def add_email_pass(database, fixed_imap: str = None, path: str = 'accounts
                             SET email_password = ?, imap_domain = ?
                             WHERE email = ?
                             ''', updates)
-                            await db.commit()
                             updates.clear()
         if updates:
             logger.info(f'Writing {len(updates)} to the database')
@@ -114,13 +110,10 @@ async def add_email_pass(database, fixed_imap: str = None, path: str = 'accounts
             SET email_password = ?, imap_domain = ?
             WHERE email = ?
             ''', updates)
-            await db.commit()
             updates.clear()
 
     except Exception as e:
         print(e)
-    finally:
-        await db.close()
 
 
 

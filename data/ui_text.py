@@ -10,7 +10,7 @@ DEFAULT_VALUES = {
     'accounts': 'accounts.txt',
     'ref': 'referral.txt',
     'threads': 1,
-    'file_name': 'import.txt',
+    'file_name': 'example',
     'separator': ':',
     'format': 'email:password',
     'export_type': 'excel',

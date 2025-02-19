@@ -38,7 +38,6 @@ class Grass(Browser, Account, Wallet):
         Browser.__init__(self, user_agent = get_user_agent())
         Account.__init__(self, ref_reg = ref_reg)
         Wallet.__init__(self)
-        self.db = DataBase('database.db')
         self.email = email
         self.username = username
         self.password = password
@@ -139,22 +138,14 @@ class Grass(Browser, Account, Wallet):
             wait = wait_random(5,15)
     )
     async def save_session(self):
-        try:
-            db = await self.db.connect()
-            await db.execute('''
-            UPDATE Accounts 
-            SET access_token = ?, access_token_create_time = ?, refresh_token = ?, user_agent = ?,
-            userid = ?, userrole = ?
-            WHERE email = ?
-            ''', (self.access_token, self.access_token_create_time, self.refresh_token, self.user_agent, self.userid, self.userrole, self.email))
-            await db.commit()
-            logger.info(f'{self.email} | Session has been saved in database')
-            return True
-        except DatabaseError as e:
-            logger.error(f'{self.email} | Database Error')
-            raise e
-        finally:
-            await self.db.close()
+        await DataBase.execute('''
+        UPDATE Accounts
+        SET access_token = ?, access_token_create_time = ?, refresh_token = ?, user_agent = ?,
+        userid = ?, userrole = ?
+        WHERE email = ?
+        ''', (self.access_token, self.access_token_create_time, self.refresh_token, self.user_agent, self.userid, self.userrole, self.email))
+        logger.info(f'{self.email} | Session has been saved in database')
+        return True
 
     @retry(
             stop = stop_after_attempt(6),
@@ -202,22 +193,19 @@ class Grass(Browser, Account, Wallet):
 
     async def save_wallet(self):
         try:
-            db = await self.db.connect()
-            await db.execute('''
+            await DataBase.execute('''
             UPDATE Accounts 
             SET wallet = ?, private_key = ?, seed = ?
             WHERE email = ?
             ''', (self.wallet, self.private_key, self.seed, self.email))
-            await db.commit()
             logger.info(f'{self.email} | Account wallet has been saved in database')
             return True
         finally:
-            await self.db.close()  
+            pass
 
     async def save_info(self):
         try:
-            db = await self.db.connect()
-            await db.execute('''
+            await DataBase.execute('''
             UPDATE Accounts 
             SET referal_code = ?, entity = ?, created = ?, verified = ?, wallet_verified = ?, reward_claimed = ?,
             modified = ?, refferals = ?, qualified_refferals = ?, userid = ?, userrole = ?, totalpoints = ?, parent_referrals = ?,
@@ -227,42 +215,27 @@ class Grass(Browser, Account, Wallet):
                   self.modified, self.refferals, self.qualified_refferals, self.userid, self.userrole, self.totalpoints, self.parent_referrals,
                   self.wallet, self.private_key, self.seed,
                   self.email))
-            await db.commit()
             logger.info(f'{self.email} | Info account has been saved in database')
             return True
         finally:
-            await self.db.close()
             if not self.session.closed:
                 await self.session.close()
 
     async def save_account(self):
         try:
-            db = await self.db.connect()
             logger.debug(f'{self.email} | Save in db')
-            await db.execute('''
-            INSERT INTO Accounts (email, password, ref_reg, username) VALUES (?, ?, ?, ?)
-            ''', (self.email, self.password, self.ref_reg, self.username))
-            if self.email_password:
-                await db.execute('''
-                UPDATE Accounts SET email_password = ? WHERE email = ?
-                ''', (self.email_password, self.email))
-            if self.imap_domain:
-                await db.execute('''
-                UPDATE Accounts SET imap_domain = ? WHERE email = ?
-                ''', (self.imap_domain, self.email))
-            await db.commit()
+            await DataBase.execute('''
+            INSERT INTO Accounts (email, password, ref_reg, username, email_password, imap_domain) VALUES (?, ?, ?, ?, ?, ?)
+            ''', (self.email, self.password, self.ref_reg, self.username, self.email_password, self.imap_domain))
             logger.info(f'{self.email} | Account has been saved in database')
         finally:
-            await self.db.close()
             if not self.session.closed:
                 await self.session.close()
 
     async def validate_session(self):
         try:
-            db = await self.db.connect()
-            self.cursor = await db.execute('SELECT access_token, access_token_create_time, user_agent, password\
-                                            FROM Accounts WHERE email = ?', (self.email,))
-            row = await self.cursor.fetchone()
+            row = await DataBase.query_custom_row('''SELECT access_token, access_token_create_time, user_agent, password\
+                                  FROM Accounts WHERE email = ?''', (self.email,), one=True)
             if not (bool(row[0]) and bool(row[1])):
                 logger.info(f'{self.email} | No active session. Login...')
                 self.password = row[3]
@@ -277,7 +250,7 @@ class Grass(Browser, Account, Wallet):
                 await self.update_headers()
                 return True
         finally:
-            await self.db.close()
+            pass
 
     async def error_stat(self):
         self.error += 1
@@ -525,14 +498,9 @@ def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.t
     return list_accounts
 
 async def import_acc_from_db(proxy: ProxyManager):
-    accounts = []
-    database = DataBase('database.db')
-    db = await database.connect()
     logger.info(f'Import account from db')
-    db.row_factory = database._row
-    cursor = await db.execute('SELECT * FROM Accounts')
-    rows = await cursor.fetchall()
-    result = [dict(row) for row in rows]
+    accounts = []
+    result = [dict(row) for row in await DataBase.query_custom_row('SELECT * FROM Accounts')]
     for i in result:
         acc = Grass(proxymanager=proxy)
         acc.__dict__.update(i)
@@ -543,20 +511,12 @@ async def import_acc_from_db(proxy: ProxyManager):
     return accounts
 
 async def search_acc_db(account: Grass):
-    database = DataBase('database.db')
-    db = await database.connect()
     logger.info(f'{account.email} | Search in db')
-    db.row_factory = database._row
-    cursor = await db.execute('SELECT * FROM Accounts WHERE email = ?', (account.email,))
-    result = await cursor.fetchone()
+    result = await DataBase.query_custom_row('SELECT * FROM Accounts WHERE email = ?', (account.email,), one=True)
     if result:
         account.__dict__.update(result)
         logger.info(f'{account.email} | Account was found in db | Password: {account.password}')
-        await database.close()
         return True
-    else:
-        await database.close()
-        return False
 
 async def worker_reg(account: Grass):
     try:
@@ -579,7 +539,6 @@ async def worker_reg(account: Grass):
     except Exception as e:
         print(f'{e}')
     finally:
-        await account.db.close()
         if not account.session.closed:
             await account.session.close()
             
@@ -594,7 +553,6 @@ async def worker_update(account: Grass):
     except RetryError:
         logger.error(f'{account.email} | Update | Retry Error')
     finally:
-        await account.db.close()
         if not account.session.closed:
             await account.session.close()
 
@@ -617,7 +575,6 @@ async def worker_verif(account: Grass):
     except RetryError:
         logger.error(f'{account.email} | Verification | Retry Error')
     finally:
-        await account.db.close()
         if not account.session.closed:
             await account.session.close()
 
@@ -627,8 +584,6 @@ async def worker_import(account: Grass):
             if await search_acc_db(account):
                 return
             await account.save_account()
-            await account.save_info()
-            await account.save_session()
     except Exception as e:
         logger.error(f'{account.email} {e}')
         raise e
@@ -654,23 +609,25 @@ async def main(new_args = None):
         if args.action == 'registration':
             proxy = ProxyManager(get_proxies(args.proxy), args.rotate)
             reflist = get_ref(args.ref)
-            #generate_random_email(50, args.accounts) #DEBUG create accs
             accounts = get_accounts(reflist, proxy, accounts = args.accounts)
             tasks = [worker_reg(a) for a in accounts]
             await asyncio.gather(*tasks, return_exceptions=True)
             logger.info(f'END Registration')
 
         elif args.action == 'imap':
-            await add_email_pass(DataBase(), args.imap , args.accounts)
+            await add_email_pass(DataBase, args.imap , args.accounts)
             logger.info(f'All imap info added')
 
         elif args.action == 'import':
-            list_dicts = await import_acc(file_name = args.file_name, separator = args.separator, form = args.format)
-            list_accs = [Grass() for _ in list_dicts]
-            for num, acc in enumerate(list_accs):
-                acc.__dict__.update(list_dicts[num])
-            tasks = [worker_import(acc) for acc in list_accs]
-            await asyncio.gather(*tasks, return_exceptions=True)
+            import_accounts = await import_acc(file_name = args.file_name, separator = args.separator, form = args.format)
+            database_accs = set(row[0] for row in await DataBase.query('''SELECT email FROM Accounts'''))
+            import_accounts = [acc for acc in import_accounts if acc[0] not in database_accs]
+            await DataBase.executemany(
+                '''
+                INSERT INTO Accounts (email, password, email_password, imap_domain, username, user_agent, referal_code, wallet, private_key, seed) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', 
+                import_accounts)
             logger.info(f'END import accounts')
 
         elif args.action == 'export':
@@ -692,10 +649,11 @@ async def main(new_args = None):
             logger.info(f'END Verification')
         else:
             logger.error(f'Incorrect --action argument')  
-
-
     except Exception as e:
         print(e)
+    finally:
+        if DataBase._connection:
+            await DataBase.close_connection()
 
 if __name__ =='__main__':
     try:
