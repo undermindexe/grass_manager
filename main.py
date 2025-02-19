@@ -55,16 +55,17 @@ class Grass(Browser, Account, Wallet):
     async def register(self):
         try:
             await self.open_session()
+            await self.update_headers()
             logger.info(f'{self.email} | Start create account. Password: {self.password}, Proxy: {self.proxy.link}')
             captcha = CaptchaService(args.captcha_service, args.captcha_key)
+            token = await captcha.get_captcha_token_async()
             json_data = {
                 "email": self.email,
                 "password": self.password,
                 "role": "USER",
                 "referralCode":self.ref_reg,
-                "username": self.username,
                 "marketingEmailConsent": random.choice([True, False]),
-                "recaptchaToken": await captcha.get_captcha_token_async(),
+                "recaptchaToken": token,
                 "listIds": [
                     15,
                 ],
@@ -72,6 +73,7 @@ class Grass(Browser, Account, Wallet):
             async with self.session.post(url = self.url['register'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
                     logger.info(f'{self.email} | Account has been created')
+                    await self.login(captcha = token)
                     return True
                 else:
                     logger.info(f'{self.email} | Account not created | Status: {response.status}')
@@ -96,17 +98,20 @@ class Grass(Browser, Account, Wallet):
             retry = (retry_if_exception_type(LoginError)),
             wait = wait_random(5,7)
     )
-    async def login(self):
+    async def login(self, captcha = None):
         try:
-            logger.debug(f'{self.email} | Start Login')
+            logger.debug(f'{self.email} | Account login...')
             await self.open_session()
+            await self.update_headers()
             json_data = {
-                    'password': self.password,
-                    'username': self.email
+                    'username': self.email,
+                    'password': self.password
             }
+            if captcha:
+                json_data['recaptchaToken'] = captcha
             async with self.session.post(url = self.url['login'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
-                    logger.info(f'{self.email} | Account login...')
+                    logger.info(f'{self.email} | Login Success')
                     login_response = await response.json()
                     self.access_token = login_response['result']['data']['accessToken']
                     self.access_token_create_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
@@ -114,7 +119,6 @@ class Grass(Browser, Account, Wallet):
                     self.userid = login_response['result']['data']['userId']
                     self.userrole = login_response['result']['data']['userRole']
                     self.headers_retrive_user['Authorization'] = self.access_token
-                    await self.update_headers()
                     if await self.save_session():
                         return True
                 else:
@@ -156,6 +160,7 @@ class Grass(Browser, Account, Wallet):
         try:
             logger.info(f'{self.email} | Start update info')
             await self.open_session()
+            await self.update_headers()
             async with self.session.get(url = self.url['retrieveUser'], headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}") as response:
                 logger.debug(f'{self.email} | Response status: {response.status}')
                 if response.status == 200:

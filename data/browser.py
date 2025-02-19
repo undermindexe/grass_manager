@@ -31,7 +31,7 @@ class Browser:
             'Origin': 'https://app.getgrass.io',
             'Priority': 'u=1, i',
             'Referer': 'https://app.getgrass.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',  # Сделать ссоответствие с user агентом
+            'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not(A:Brand";v="99"',
             'Sec-Ch-Ua-Mobile': '?0',
             'Sec-Ch-Ua-Platform': '"Windows"',
             'Sec-Fetch-Dest': 'empty',
@@ -43,11 +43,11 @@ class Browser:
         self.headers_retrive_user = {
             'Accept': 'application/json, text/plain, */*',
             'Accept-language': 'en-US,en;q=0.9',
-            'Authorization': None, # Указываем после логина
+            'Authorization': None,
             'Origin': 'https://app.getgrass.io',
             'Priority': 'u=1, i',
             'Referer': 'https://app.getgrass.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',  # Сделать соответствие с user агентом
+            'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not(A:Brand";v="99"', 
             'Sec-Ch-Ua-Mobile': '?0',
             'Sec-Ch-Ua-Platform': '"Windows"',
             'Sec-Fetch-Dest': 'empty',
@@ -83,8 +83,8 @@ class Browser:
 
     async def update_headers(self):
         ver = await self.get_ua_version()
-        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not_A Brand";v="24"'
-        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not_A Brand";v="24"'
+        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not(A:Brand";v="99"'
+        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not(A:Brand";v="99"'
 
     async def open_session(self):
         if self.session.closed:

@@ -32,7 +32,7 @@ def get_user_agent():
         return random.choice(USER_AGENTS)
     else:
         logger.info(f'Generate user-agent list')
-        for _ in range(300):
+        for _ in range(150):
             USER_AGENTS.append(UserAgent('Chrome', 'Windows', 129.0, 0.0, 'desktop').random)
         return random.choice(USER_AGENTS)
 
