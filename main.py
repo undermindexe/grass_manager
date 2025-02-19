@@ -73,6 +73,7 @@ class Grass(Browser, Account, Wallet):
             async with self.session.post(url = self.url['register'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
                     logger.info(f'{self.email} | Account has been created')
+                    await self.save_account()
                     await self.login(captcha = token)
                     return True
                 else:
@@ -531,9 +532,7 @@ async def worker_reg(account: Grass):
             else:
                 await account.get_proxy()
                 if await account.register():
-                    await account.save_account()
-                    if await account.validate_session():
-                        await account.update_info()
+                    await account.update_info()
                 else:
                     logger.error(f'{account.email} | Account maybe registered')
                 await account.proxymanager.drop(account.proxy)
