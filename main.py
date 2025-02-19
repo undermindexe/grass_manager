@@ -27,8 +27,7 @@ semaphore = asyncio.Semaphore(args.threads)
 
 
 class Grass(Browser, Account, Wallet):
-    def __init__(self, email: str = None, 
-                 username: str = None, 
+    def __init__(self, email: str = None,
                  password: str = None, 
                  email_password: str = None, 
                  imap_domain: str = None, 
@@ -39,7 +38,6 @@ class Grass(Browser, Account, Wallet):
         Account.__init__(self, ref_reg = ref_reg)
         Wallet.__init__(self)
         self.email = email
-        self.username = username
         self.password = password
         self.email_password = email_password
         self.imap_domain = imap_domain
@@ -168,6 +166,7 @@ class Grass(Browser, Account, Wallet):
                     retrieveUser = await response.json()
                     self.referal_code = retrieveUser['result']['data']['referralCode']
                     self.entity = retrieveUser['result']['data']['entity']
+                    self.username = retrieveUser['result']['data']['username']
                     self.created = retrieveUser['result']['data']['created']
                     self.verified = retrieveUser['result']['data']['isVerified']
                     self.wallet_verified = retrieveUser['result']['data']['isWalletAddressVerified']
@@ -213,11 +212,11 @@ class Grass(Browser, Account, Wallet):
         try:
             await DataBase.execute('''
             UPDATE Accounts 
-            SET referal_code = ?, entity = ?, created = ?, verified = ?, wallet_verified = ?, reward_claimed = ?,
+            SET referal_code = ?, entity = ?, username = ?, created = ?, verified = ?, wallet_verified = ?, reward_claimed = ?,
             modified = ?, refferals = ?, qualified_refferals = ?, userid = ?, userrole = ?, totalpoints = ?, parent_referrals = ?,
             wallet = ?, private_key = ?, seed = ?
             WHERE email = ?
-            ''', (self.referal_code, self.entity, self.created, self.verified, self.wallet_verified, self.reward_claimed,
+            ''', (self.referal_code, self.entity, self.username, self.created, self.verified, self.wallet_verified, self.reward_claimed,
                   self.modified, self.refferals, self.qualified_refferals, self.userid, self.userrole, self.totalpoints, self.parent_referrals,
                   self.wallet, self.private_key, self.seed,
                   self.email))
@@ -240,6 +239,7 @@ class Grass(Browser, Account, Wallet):
 
     async def validate_session(self):
         try:
+            await self.update_headers()
             row = await DataBase.query_custom_row('''SELECT access_token, access_token_create_time, user_agent, password\
                                   FROM Accounts WHERE email = ?''', (self.email,), one=True)
             if not (bool(row[0]) and bool(row[1])):
@@ -253,7 +253,6 @@ class Grass(Browser, Account, Wallet):
                 self.user_agent = row[2]
                 self.password = row[3]
                 self.headers_retrive_user['Authorization'] = self.access_token
-                await self.update_headers()
                 return True
         finally:
             pass
@@ -265,9 +264,9 @@ class Grass(Browser, Account, Wallet):
             self.error = 0
 
     @retry(
-            stop = stop_after_attempt(5),
+            stop = stop_after_attempt(2),
             retry = (retry_if_exception_type(VarificationError)),
-            wait = wait_random(5,7)
+            wait = wait_random(180,300)
     )
     async def send_email_verification(self):
         try:
@@ -485,11 +484,11 @@ def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.t
             if ':' in string:
                 string = tuple(string.split(':'))
                 if validate_email(string[0]) and len(string) == 2:
-                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], username = get_nickname(), ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
+                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
                     logger.info(f'Select mode email:email_pass | {string}')
                     list_accounts.append(account)
                 elif validate_email(string[0]) and len(string) == 3:
-                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=string[2], username = get_nickname(), ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass:imap_domain
+                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=string[2], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass:imap_domain
                     logger.info(f'Select mode email:email_pass:imap_domain | {string}')
                     list_accounts.append(account)
                 else:
@@ -498,7 +497,7 @@ def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.t
                 if validate_email(string):
                     password = generate_pass()
                     logger.info(f'Select mode no email_pass | {string} {password}')
-                    list_accounts.append(Grass(email = string, password = password, username = get_nickname(), ref_reg = random.choice(reflist), proxymanager=proxy))
+                    list_accounts.append(Grass(email = string, password = password, ref_reg = random.choice(reflist), proxymanager=proxy))
                 else:
                     logger.error(f'Error parsing account | {string}')
     return list_accounts

@@ -8,6 +8,7 @@ class Account():
         self.userrole = None
         self.referal_code = None
         self.entity = None
+        self.username = None
         self.created = None
         self.verified = False
         self.wallet_verified = False
