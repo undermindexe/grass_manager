@@ -461,7 +461,6 @@ class Grass(Browser, Account, Wallet):
                 logger.info(f'{self.email} | Wallet already linked and verified')
             elif self.wallet_verified == False:
                 if self.seed != None:
-                    #sign, timestamp = self.gen_wallet(self.seed)
                     await self.send_wallet_verification()
                     token = await self.email_verification(subject='"Verify Your Wallet Address for Grass"')
                     await self.click_wallet_verification(token)

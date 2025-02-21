@@ -76,7 +76,7 @@ def search_mail(request,
                 password,
                 imap_server,
                 proxy,
-                imap_proxy):
+                imap_proxy = None):
     if imap_proxy:
         with open(imap_proxy, 'r', encoding='utf-8') as file:
             proxies = file.readlines()
@@ -96,7 +96,8 @@ def search_mail(request,
             mailbox.login(email, password)
 
             typ, data = mailbox.list()
-            folders = reversed([re.search(b'"/" (.+)', folder).group(1).decode('utf-8') for folder in data])
+            logger.debug(data)
+            folders = reversed([re.search(br'["|/] (.+)', folder).group(1).decode('utf-8') for folder in data])
             attempt = 0
             while attempt < 6:
                 for i in folders:
