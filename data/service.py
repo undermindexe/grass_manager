@@ -63,7 +63,8 @@ def get_ref(path_ref: str = 'referral.txt'):
     with open(path_ref, 'r', encoding='utf-8') as file:
         ref = [i.strip() for i in file.readlines()]
         if len(ref) == 0:
-            ref = ['GRASS']
+            ref = ['GRASS', 'GRASS']
+    print(ref)
     return ref
 
 def get_nickname():

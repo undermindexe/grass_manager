@@ -108,8 +108,13 @@ def search_mail(request,
                         mails = reversed(search[0].split())
                         for msg in mails:
                             logger.info(f'{email} | Found message')
-                            status, data = mailbox.fetch(msg, '(BODY[TEXT])')
-                            result = quopri.decodestring(data[0][1]).decode('utf-8')
+                            if 'Your One Time Password for Grass is' in request:
+                                status, data = mailbox.fetch(msg, '(BODY[HEADER.FIELDS (SUBJECT)])')
+                                result = quopri.decodestring(data[0][1]).decode('utf-8')
+                                result = result.strip()[-6:]
+                            else:
+                                status, data = mailbox.fetch(msg, '(BODY[TEXT])')
+                                result = quopri.decodestring(data[0][1]).decode('utf-8')
                             return result
                 attempt += 1
                 time.sleep(10)

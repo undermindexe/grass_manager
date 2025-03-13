@@ -50,32 +50,32 @@ class Grass(Browser, Account, Wallet):
             retry = (retry_if_exception_type(RegistrationError)),
             wait = wait_random(5,7)
     )
-    async def register(self):
+    async def send_register_otp(self):
         try:
             await self.open_session()
             await self.update_headers()
-            logger.info(f'{self.email} | Start create account. Password: {self.password}, Proxy: {self.proxy.link}')
+            logger.info(f'{self.email} | Start create account. Password: {self.password}| Proxy: {self.proxy.link}| Ref_code: {self.ref_reg}')
             captcha = CaptchaService(args.captcha_service, args.captcha_key)
             token = await captcha.get_captcha_token_async()
             json_data = {
                 "email": self.email,
-                "password": self.password,
-                "role": "USER",
                 "referralCode":self.ref_reg,
                 "marketingEmailConsent": random.choice([True, False]),
                 "recaptchaToken": token,
-                "listIds": [
-                    15,
-                ],
+                "termsAccepted": True,
+                "page": "register"
             }
-            async with self.session.post(url = self.url['register'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
+            async with self.session.post(url = self.url['sendOtp'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
-                    logger.info(f'{self.email} | Account has been created')
-                    await self.save_account()
-                    await self.login(captcha = token)
+                    logger.info(f'{self.email} | Success send OTP massage for {self.email}')
+                    await asyncio.sleep(5)
+                    otp_code = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
+                    logger.info(f'Success get otp code: {otp_code}')
+                    #await self.save_account()
+                    #await self.login(captcha = token)
                     return True
                 else:
-                    logger.info(f'{self.email} | Account not created | Status: {response.status}')
+                    logger.info(f'{self.email} | Error send OTP massage for {self.email} | Status: {response.status}')
                     raise RegistrationError()
         except RetryError:
             logger.error(f'{self.email} | Registration | Retry Error')
@@ -433,8 +433,6 @@ class Grass(Browser, Account, Wallet):
                 token = email.split('token=')[1].split('/')[0]
                 logger.debug(f'{self.email} | Token verified wallet: {token}')
                 return token
-
-
         except Exception as e:
             logger.error(f'{self.email} | Error verification {e}')
             raise e
@@ -475,30 +473,23 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error verification {e}')
             raise e
 
-def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.txt'):
+def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.txt', domain: str = ''):
     list_accounts = []
     with open(accounts, 'r', encoding= 'utf-8') as file:
         for string in file.readlines():
             string = string.strip()
             if ':' in string:
                 string = tuple(string.split(':'))
-                if validate_email(string[0]) and len(string) == 2:
-                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
+                if validate_email(string[0]) and len(string) == 2 and domain:
+                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=domain, ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
                     logger.info(f'Select mode email:email_pass | {string}')
                     list_accounts.append(account)
                 elif validate_email(string[0]) and len(string) == 3:
                     account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=string[2], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass:imap_domain
                     logger.info(f'Select mode email:email_pass:imap_domain | {string}')
                     list_accounts.append(account)
-                else:
-                    logger.error(f'Error parsing account | {string}')
             else:
-                if validate_email(string):
-                    password = generate_pass()
-                    logger.info(f'Select mode no email_pass | {string} {password}')
-                    list_accounts.append(Grass(email = string, password = password, ref_reg = random.choice(reflist), proxymanager=proxy))
-                else:
-                    logger.error(f'Error parsing account | {string}')
+                logger.error(f'Error parsing account | {string}')
     return list_accounts
 
 async def import_acc_from_db(proxy: ProxyManager):
@@ -529,7 +520,7 @@ async def worker_reg(account: Grass):
                 logger.info(f'{account.email} | Account in the database | SKIP')
             else:
                 await account.get_proxy()
-                if await account.register():
+                if await account.send_register_otp():
                     await account.update_info()
                 else:
                     logger.error(f'{account.email} | Account maybe registered')
@@ -611,7 +602,7 @@ async def main(new_args = None):
         if args.action == 'registration':
             proxy = ProxyManager(get_proxies(args.proxy), args.rotate)
             reflist = get_ref(args.ref)
-            accounts = get_accounts(reflist, proxy, accounts = args.accounts)
+            accounts = get_accounts(reflist, proxy, accounts = args.accounts, domain = args.imap)
             tasks = [worker_reg(a) for a in accounts]
             await asyncio.gather(*tasks, return_exceptions=True)
             logger.info(f'END Registration')

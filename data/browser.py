@@ -19,7 +19,9 @@ class Browser:
             'confirmEmail': 'https://api.getgrass.io/confirmEmail', 
             'verifySignedMessage': 'https://api.getgrass.io/verifySignedMessage',
             'sendWalletAddressEmailVerification': 'https://api.getgrass.io/sendWalletAddressEmailVerification',
-            'confirmWalletAddress': 'https://api.getgrass.io/confirmWalletAddress'
+            'confirmWalletAddress': 'https://api.getgrass.io/confirmWalletAddress',
+            'sendOtp': 'https://api.getgrass.io/sendOtp',
+            'verifyOtp': 'https://api.getgrass.io/verifyOtp'
         }
         self.user_agent = user_agent
         self.proxy = proxy
