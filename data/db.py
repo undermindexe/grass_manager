@@ -19,7 +19,7 @@ class DataBase:
             email_password TEXT,
             imap_domain TEXT,
             username TEXT,
-            password TEXT NOT NULL,
+            password TEXT,
             access_token TEXT,
             refresh_token TEXT,
             access_token_create_time DATETIME,

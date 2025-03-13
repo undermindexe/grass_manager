@@ -70,9 +70,12 @@ class Grass(Browser, Account, Wallet):
                     logger.info(f'{self.email} | Success send OTP massage for {self.email}')
                     await asyncio.sleep(5)
                     otp_code = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
-                    logger.info(f'Success get otp code: {otp_code}')
-                    #await self.save_account()
-                    #await self.login(captcha = token)
+                    logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
+                    await self.verify_otp(otp_code)
+                    if await self.set_password():
+                        token = await self.email_verification(subject='"Set Password"')
+                        if await self.reset_password(token):
+                            await self.save_password()
                     return True
                 else:
                     logger.info(f'{self.email} | Error send OTP massage for {self.email} | Status: {response.status}')
@@ -132,6 +135,84 @@ class Grass(Browser, Account, Wallet):
                 logger.info(f'{self.email} | New proxy: {self.proxy.link}') 
                 self.error = 0
             raise LoginError('Login error')
+        finally:
+            await self.session.close()
+
+    @retry(
+            stop = stop_after_attempt(5),
+            retry = (retry_if_exception_type(LoginError)),
+            wait = wait_random(5,7)
+    )
+    async def verify_otp(self, otp_code):
+        try:
+            logger.debug(f'{self.email} | Verify OTP Code...')
+            await self.open_session()
+            await self.update_headers()
+            json_data = {
+                    "email": self.email,
+                    "otp": otp_code
+            }
+            async with self.session.post(url = self.url['verifyOtp'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
+                if response.status == 200:
+                    logger.info(f'{self.email} | Success Verify OTP Code')
+                    login_response = await response.json()
+                    self.access_token = login_response['result']['data']['accessToken']
+                    self.access_token_create_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                    self.refresh_token = login_response['result']['data']['refreshToken']
+                    self.userid = login_response['result']['data']['userId']
+                    self.userrole = login_response['result']['data']['userRole']
+                    self.headers_retrive_user['Authorization'] = self.access_token
+                    await self.save_account()
+                    await self.save_session()
+                    return True
+                else:
+                    raise LoginError('Verify OTP error')
+        except Exception as e:
+            if not self.session.closed:
+                await self.session.close()
+            logger.error(f'{self.email} | Error Verify OTP | {e}')
+            self.error += 1
+            if self.error > 3:
+                await self.swap_proxy()
+                logger.info(f'{self.email} | New proxy: {self.proxy.link}') 
+                self.error = 0
+            raise LoginError('Verify OTP error')
+        finally:
+            await self.session.close()
+
+    @retry(
+            stop = stop_after_attempt(5),
+            retry = (retry_if_exception_type(LoginError)),
+            wait = wait_random(5,7)
+    )
+    async def set_password(self):
+        try:
+            logger.debug(f'{self.email} | Send setup password link')
+            await self.open_session()
+            await self.update_headers()
+            self.headers_retrive_user['Authorization'] = self.access_token
+            captcha = CaptchaService(args.captcha_service, args.captcha_key)
+            token = await captcha.get_captcha_token_async()
+            json_data = {
+                    "email": self.email,
+                    "recaptchaToken": token
+            }
+            async with self.session.post(url = self.url['setPassword'], headers= self.headers_retrive_user, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
+                if response.status == 200:
+                    logger.info(f'{self.email} | Success send setup password link for email')
+                    return True
+                else:
+                    raise LoginError('Send setup password link error')
+        except Exception as e:
+            if not self.session.closed:
+                await self.session.close()
+            logger.error(f'{self.email} | Setup password link error | {e}')
+            self.error += 1
+            if self.error > 3:
+                await self.swap_proxy()
+                logger.info(f'{self.email} | New proxy: {self.proxy.link}') 
+                self.error = 0
+            raise LoginError('Setup password link error')
         finally:
             await self.session.close()
 
@@ -230,9 +311,22 @@ class Grass(Browser, Account, Wallet):
         try:
             logger.debug(f'{self.email} | Save in db')
             await DataBase.execute('''
-            INSERT INTO Accounts (email, password, ref_reg, username, email_password, imap_domain) VALUES (?, ?, ?, ?, ?, ?)
-            ''', (self.email, self.password, self.ref_reg, self.username, self.email_password, self.imap_domain))
+            INSERT INTO Accounts (email, ref_reg, username, email_password, imap_domain) VALUES (?, ?, ?, ?, ?)
+            ''', (self.email, self.ref_reg, self.username, self.email_password, self.imap_domain))
             logger.info(f'{self.email} | Account has been saved in database')
+        finally:
+            if not self.session.closed:
+                await self.session.close()
+
+    async def save_password(self):
+        try:
+            logger.debug(f'{self.email} | Save password in db')
+            await DataBase.execute('''
+            UPDATE Accounts
+            SET password = ?
+            WHERE email = ?
+            ''', (self.password, self.email))
+            logger.info(f'{self.email} | Password has been saved in database')
         finally:
             if not self.session.closed:
                 await self.session.close()
@@ -310,6 +404,31 @@ class Grass(Browser, Account, Wallet):
             if not self.session.closed:
                 await self.session.close()
             logger.error(f'{self.email} | Error verification {e}')
+            await self.error_stat()
+            raise VarificationError()
+        finally:
+            await self.session.close()
+
+    async def reset_password(self, token):
+        try:
+            await self.open_session()
+            logger.info(f'{self.email} | Attempt setup/reset password')
+            self.headers_retrive_user['Authorization'] = token
+            json_data = {
+                    'password': self.password
+            }
+            response = await self.session.post(url=self.url['resetPassword'], data = json.dumps(json_data), headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}")
+            if response.status == 200:
+                logger.info(f'{self.email} | Success setup password: {self.password}')
+
+                return True
+            else:
+                logger.error(f'{self.email} | Error setup password: Status {response.status}')
+                raise VarificationError
+        except Exception as e:
+            if not self.session.closed:
+                await self.session.close()
+            logger.error(f'{self.email} | Error setup password {e}')
             await self.error_stat()
             raise VarificationError()
         finally:
@@ -432,6 +551,11 @@ class Grass(Browser, Account, Wallet):
                 email = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT {subject}')
                 token = email.split('token=')[1].split('/')[0]
                 logger.debug(f'{self.email} | Token verified wallet: {token}')
+                return token
+            elif subject == '"Set Password"':
+                email = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT {subject}')
+                token = email.split('token=')[1].split('/')[0]
+                logger.debug(f'{self.email} | Token setup password: {token}')
                 return token
         except Exception as e:
             logger.error(f'{self.email} | Error verification {e}')

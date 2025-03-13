@@ -21,7 +21,9 @@ class Browser:
             'sendWalletAddressEmailVerification': 'https://api.getgrass.io/sendWalletAddressEmailVerification',
             'confirmWalletAddress': 'https://api.getgrass.io/confirmWalletAddress',
             'sendOtp': 'https://api.getgrass.io/sendOtp',
-            'verifyOtp': 'https://api.getgrass.io/verifyOtp'
+            'verifyOtp': 'https://api.getgrass.io/verifyOtp',
+            'setPassword': 'https://api.getgrass.io/setPassword',
+            'resetPassword': 'https://api.getgrass.io/resetPassword'
         }
         self.user_agent = user_agent
         self.proxy = proxy
@@ -85,8 +87,8 @@ class Browser:
 
     async def update_headers(self):
         ver = await self.get_ua_version()
-        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not(A:Brand";v="99"'
-        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not(A:Brand";v="99"'
+        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not:A-Brand";v="24"'
+        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not:A-Brand";v="24"'
 
     async def open_session(self):
         if self.session.closed:
