@@ -76,6 +76,7 @@ class MyInterface(App):
                                             Vertical(
                                                 Static("Регистрация", classes="title"),
                                                 InfoInput(placeholder='Accounts file path', type='text', id='accounts'),
+                                                InfoInput(placeholder='Fixed imap for all acc', type='text', id='imap'),
                                                 InfoInput(placeholder='Proxy file path', type='text', id='proxy'),
                                                 InfoInput(placeholder='Proxy rotate time (in seconds)', type='integer', id='rotate'),
                                                 InfoInput(placeholder='Captcha service', type='text', id='captcha_service'),
