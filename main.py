@@ -46,7 +46,7 @@ class Grass(Browser, Account, Wallet):
         self.error = 0
 
     @retry(
-            stop = stop_after_attempt(4),
+            stop = stop_after_attempt(6),
             retry = (retry_if_exception_type(RegistrationError)),
             wait = wait_random(5,7)
     )
@@ -69,13 +69,6 @@ class Grass(Browser, Account, Wallet):
                 if response.status == 200:
                     logger.info(f'{self.email} | Success send OTP massage for {self.email}')
                     await asyncio.sleep(5)
-                    otp_code = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
-                    logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
-                    await self.verify_otp(otp_code)
-                    if await self.set_password():
-                        token = await self.email_verification(subject='"Set Password"')
-                        if await self.reset_password(token):
-                            await self.save_password()
                     return True
                 else:
                     logger.info(f'{self.email} | Error send OTP massage for {self.email} | Status: {response.status}')
@@ -420,7 +413,6 @@ class Grass(Browser, Account, Wallet):
             response = await self.session.post(url=self.url['resetPassword'], data = json.dumps(json_data), headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}")
             if response.status == 200:
                 logger.info(f'{self.email} | Success setup password: {self.password}')
-
                 return True
             else:
                 logger.error(f'{self.email} | Error setup password: Status {response.status}')
@@ -645,7 +637,14 @@ async def worker_reg(account: Grass):
             else:
                 await account.get_proxy()
                 if await account.send_register_otp():
-                    await account.update_info()
+                    otp_code = await account.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
+                    logger.debug(f'{account.email} | Success get OTP Code: {otp_code}')
+                    if await account.verify_otp(otp_code):
+                        if await account.set_password():
+                            token = await account.email_verification(subject='"Set Password"')
+                            if await account.reset_password(token):
+                                await account.save_password()
+                            await account.update_info()
                 else:
                     logger.error(f'{account.email} | Account maybe registered')
                 await account.proxymanager.drop(account.proxy)
