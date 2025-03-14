@@ -234,6 +234,9 @@ class Grass(Browser, Account, Wallet):
             logger.info(f'{self.email} | Start update info')
             await self.open_session()
             await self.update_headers()
+            if self.headers_retrive_user['Authorization'] == None:
+                logger.error(f'{self.email} | Error update account info. Enought Authorization token')
+                return False
             async with self.session.get(url = self.url['retrieveUser'], headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}") as response:
                 logger.debug(f'{self.email} | Response status: {response.status}')
                 if response.status == 200:
