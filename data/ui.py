@@ -98,6 +98,8 @@ class MyInterface(App):
                                                 InfoInput(placeholder='Proxy file path', type='text', id='proxy'),
                                                 InfoInput(placeholder='Proxy rotate time (in seconds)', type='integer', id='rotate'),
                                                 InfoInput(placeholder='Proxy file for imap (Optional)', type='text', id='imap_proxy'),
+                                                InfoInput(placeholder='Captcha service', type='text', id='captcha_service'),
+                                                InfoInput(placeholder='Captcha api key', type='text', id='captcha_key'),
                                                 InfoInput(placeholder='Number of threads', type='integer', id = 'threads'),
                                                 Button('ЗАПУСК', id='start_verification', classes="button"), 
                                                 Button('НАЗАД', id='back', classes="button"),

@@ -50,21 +50,31 @@ class Grass(Browser, Account, Wallet):
             retry = (retry_if_exception_type(RegistrationError)),
             wait = wait_random(5,7)
     )
-    async def send_register_otp(self):
+    async def send_otp(self, action: str):
         try:
             await self.open_session()
             await self.update_headers()
-            logger.info(f'{self.email} | Start create account. Password: {self.password}| Proxy: {self.proxy.link}| Ref_code: {self.ref_reg}')
-            captcha = CaptchaService(args.captcha_service, args.captcha_key)
-            token = await captcha.get_captcha_token_async()
-            json_data = {
-                "email": self.email,
-                "referralCode":self.ref_reg,
-                "marketingEmailConsent": random.choice([True, False]),
-                "recaptchaToken": token,
-                "termsAccepted": True,
-                "page": "register"
-            }
+            logger.info(f'{self.email} | Send OTP {action} mail. Password: {self.password}| Proxy: {self.proxy.link}| Ref_code: {self.ref_reg}')
+            if action == 'register':
+                captcha = CaptchaService(args.captcha_service, args.captcha_key)
+                token = await captcha.get_captcha_token_async()
+                json_data = {
+                    "email": self.email,
+                    "referralCode":self.ref_reg,
+                    "marketingEmailConsent": random.choice([True, False]),
+                    "recaptchaToken": token,
+                    "termsAccepted": True,
+                    "page": "register"
+                }
+            elif action == 'login':
+                json_data = {
+                    "email": self.email,
+                    "referralCode":"",
+                    "marketingEmailConsent": False,
+                    "recaptchaToken": "",
+                    "termsAccepted": False,
+                    "page": "login"
+                }              
             async with self.session.post(url = self.url['sendOtp'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
                     logger.info(f'{self.email} | Success send OTP massage for {self.email}')
@@ -74,12 +84,12 @@ class Grass(Browser, Account, Wallet):
                     logger.info(f'{self.email} | Error send OTP massage for {self.email} | Status: {response.status}')
                     raise RegistrationError()
         except RetryError:
-            logger.error(f'{self.email} | Registration | Retry Error')
+            logger.error(f'{self.email} | Send OTP | Retry Error')
             return False
         except Exception as e:
             if not self.session.closed:
                 await self.session.close()
-            logger.error(f'{self.email} | Error registration | {e}')
+            logger.error(f'{self.email} | {e}')
             self.error += 1
             if self.error > 2:
                 await self.swap_proxy()
@@ -155,7 +165,6 @@ class Grass(Browser, Account, Wallet):
                     self.userid = login_response['result']['data']['userId']
                     self.userrole = login_response['result']['data']['userRole']
                     self.headers_retrive_user['Authorization'] = self.access_token
-                    await self.save_account()
                     await self.save_session()
                     return True
                 else:
@@ -335,8 +344,17 @@ class Grass(Browser, Account, Wallet):
             if not (bool(row[0]) and bool(row[1])):
                 logger.info(f'{self.email} | No active session. Login...')
                 self.password = row[3]
-                if await self.login():
-                    return True
+                if self.password != None:
+                    logger.info(f'{self.email} | Login via password')
+                    if await self.login():
+                        return True
+                else:
+                    logger.info(f'{self.email} | Login via OTP')
+                    if await self.send_otp(action = 'login'):
+                        otp_code = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
+                        logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
+                        if await self.verify_otp(otp_code):
+                            return True
             else:
                 logger.info(f'{self.email} | An active session is in use')
                 self.access_token = row[0]
@@ -410,6 +428,7 @@ class Grass(Browser, Account, Wallet):
             await self.open_session()
             logger.info(f'{self.email} | Attempt setup/reset password')
             self.headers_retrive_user['Authorization'] = token
+            self.password = generate_pass() if self.password == None else self.password
             json_data = {
                     'password': self.password
             }
@@ -639,10 +658,12 @@ async def worker_reg(account: Grass):
                 logger.info(f'{account.email} | Account in the database | SKIP')
             else:
                 await account.get_proxy()
-                if await account.send_register_otp():
+                if await account.send_otp(action = 'register'):
                     otp_code = await account.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
-                    logger.debug(f'{account.email} | Success get OTP Code: {otp_code}')
+                    logger.info(f'{account.email} | Success get OTP Code: {otp_code}')
                     if await account.verify_otp(otp_code):
+                        await account.save_account()
+                        await account.save_session()
                         if await account.set_password():
                             token = await account.email_verification(subject='"Set Password"')
                             if await account.reset_password(token):
@@ -678,18 +699,26 @@ async def worker_update(account: Grass):
 async def worker_verif(account: Grass):
     try:
         async with semaphore:
-            if account.verified == True and account.wallet_verified == True:
-                logger.info(f'{account.email} | Account already verified | SKIP')
+            logger.debug(f'{account.email} | Mail Verified: {account.verified} | Wallet Verified: {account.wallet_verified} | Password: {account.password}')
+            if account.verified == True and account.wallet_verified == True and account.password != None:
+                logger.info(f'{account.email} | Account already verified and has a password | SKIP')
             else:
                 await account.get_proxy()
                 logger.info(f'{account.email} | Proxy: {account.proxy.link} Password: {account.password}')
                 if await account.validate_session():
                     await account.update_info()
+                    if account.password == None:
+                        logger.info(f'{account.email} | Start setup password')
+                        if await account.set_password():
+                            token = await account.email_verification(subject='"Set Password"')
+                            if await account.reset_password(token):
+                                await account.save_password()
+                            await account.update_info()
                     if account.verified == False:
                         await account.email_verification(subject='"Verify Your Email for Grass"')
                     if account.verified == True and account.wallet_verified == False:
                         await account.wallet_verification()
-                    await account.update_info()
+                        await account.update_info()
                 await account.proxymanager.drop(account.proxy)
     except RetryError:
         logger.error(f'{account.email} | Verification | Retry Error')
