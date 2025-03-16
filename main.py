@@ -519,8 +519,11 @@ class Grass(Browser, Account, Wallet):
     async def send_wallet_verification(self):
         try:
             await self.open_session()
-            logger.info(f'{self.email} | Attempt send email verification wallet')
+            if self.access_token == None and self.headers_retrive_user['Authorization'] == None:
+                logger.error(f'{self.email} | No authorization token')
+                raise ConnectWallet
             self.headers_retrive_user['Authorization'] = self.access_token
+            logger.info(f'{self.email} | Attempt send email verification wallet')
             response = await self.session.options(url=self.url['sendWalletAddressEmailVerification'], headers= self.options_headers, proxy = f"http://{self.proxy.link}")
             if response.status == 204:
                 logger.info(f'{self.email} | Success OPTIONS request: {response.status}')
