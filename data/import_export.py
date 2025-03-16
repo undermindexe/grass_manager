@@ -33,6 +33,7 @@ async def import_acc(file_name: str = 'import', separator: str = ':', form: str 
     for line in lines:
         account = []
         line = line.strip().split(separator)
+        line = [None if item == "None" else item for item in line]
         if await validate_params(set(keys), line):
             account = tuple([line[keys.index(i)] if i in keys else None for i in ALLOW_PARAM])
             list_accounts.append(account)
