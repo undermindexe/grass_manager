@@ -3,7 +3,7 @@ from logger import logger
 import pandas
 
 
-ALWAYS_PARAM =('email', 'email_password')
+ALWAYS_PARAM =('email',)
 ALLOW_PARAM = ('email', 'password', 'email_password', 'imap_domain', 'username', 'user_agent', 'referal_code', 'wallet', 'private_key', 'seed')
 
 
