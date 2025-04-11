@@ -34,7 +34,7 @@ class MyInterface(App):
     def start_menu(self):
         start_menu = Horizontal(self.panel_links(), 
         Vertical(Static("GRASS FAKER\nAccount manager", classes="title"),
-                           Static("Наведите курсор на на кнопку для описания", classes="title2"),
+                           Static("Наведите курсор на кнопку для описания", classes="title2"),
                             MenuButton("Регистрация", id="registration", classes="button"),
                             MenuButton("Верификация", id="verification", classes="button"),
                             MenuButton("Обновить информацию", id="update", classes="button"),
