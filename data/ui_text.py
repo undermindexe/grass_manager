@@ -16,6 +16,7 @@ DEFAULT_VALUES = {
     'export_type': 'excel',
     'imap_proxy': None,
     'imap': 'imap.firstmail.ltd',
+    'forward_mode': False,
     'debug': False
 }
 
@@ -134,7 +135,14 @@ txt - экспортирует данные в текстовый файл, со
     'imap': '''Фиксированное значение imap
 Если в вашем файле с аккаунтами не указан домен imap у каждой почты, но вы знаете,
 что домен для всех почт один - вы можете прописать домен в это поле. Тогда в файле с аккаунтами будет
-достаточно формата email:email_password'''
+достаточно формата email:email_password''',
+
+    'forward_mode': '''Режим пересылки писем на 1 почту
+Формат для такой работы:
+email:forward_email:pass:imap_domain
+При этом важно, что imap_domain должен быть от почты, на которую прийдет письмо
+Для активации введите "True" текст в поле
+'''
 }
 
 CSS = """
@@ -146,7 +154,7 @@ Screen {
 #container {
     layout: horizontal;
     width: 140;
-    height: 44;
+    height: 50;
     align: center middle;
 }
 .container_vert_left {

@@ -60,17 +60,6 @@ Linux and MacOS do not have these shortcomings
 
 - `python main.py`
 
-### Install in virtual enviroment
-
-- `python -m venv venv`
-- `venv\Scripts\activate`
-- `pip install -r requirements.txt`
-
-### Start in virtual enviroment
-
-- `venv\Scripts\activate`
-- `python main.py`
-
 ### Contact
 
 [Telegram](https://t.me/UnderMindExe)
@@ -120,17 +109,6 @@ Linux и MacOS лишены этих недостатков
 
 ### Запуск
 
-- `python main.py`
-
-### Установка в виртуальном окружении
-
-- `python -m venv venv`
-- `venv\Scripts\activate`
-- `pip install -r requirements.txt`
-
-### Запуск в виртуальном окружении
-
-- `venv\Scripts\activate`
 - `python main.py`
 
 ### Контакты

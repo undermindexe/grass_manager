@@ -17,7 +17,7 @@ class InfoInput(Input):
         if self.id in DEFAULT_DESCRIPTION:
             description = self.app.query_one("#description", Static)
             description.update(DEFAULT_DESCRIPTION[self.id])
-        super()._on_enter(event) 
+        super()._on_enter(event)
 
 class MyInterface(App):
     CSS = CSS
@@ -49,16 +49,16 @@ class MyInterface(App):
         panel = Vertical(Vertical(Static("---> Где нас найти <---", classes="title"),
                                   Vertical(Link('Telegram Канал', url='https://t.me/expanse_crypto', classes='link'), classes="link_container"),
                                   Vertical(Link('Telegram Чат', url='https://t.me/expanse_chat', classes='link'), classes="link_container"),
-                                  Vertical(Link('Поддержка', url='https://t.me/expanse_crypto', classes='link'), classes="link_container"),
-                                  Vertical(Link('Купить Grass Faker', url='https://t.me/expanse_crypto', classes='link'), classes="link_container"),
+                                  Vertical(Link('Поддержка', url='https://t.me/UnderMindExe', classes='link'), classes="link_container"),
+                                  Vertical(Link('Купить Grass Faker', url='https://t.me/grass_faker_bot', classes='link'), classes="link_container"),
                                   classes="container_about1"),
                          Vertical(Static("---> Купить прокси <---", classes="title"), 
                                   Vertical(Link('Proxy Seller', url='https://proxy-seller.com/?partner=SU9ID7IKFWSKOZ', classes='link'), classes="link_container"),
-                                  Vertical(Link('Proxy Seller, с 50% скидкой (СКОРО)', url='https://t.me/UnderMindExe', classes='link'), classes="link_container"),
+                                  Vertical(Link('Proxy Seller, но намного дешевле', url='https://t.me/node_proxy_bot', classes='link'), classes="link_container"),
                                   Static("---> Купить почты <---", classes="title"),
                                   Vertical(Link('Firstmail', url='https://firstmail.ltd/?ref=28236', classes='link'), classes="link_container"),
                                   Static("---> Аренда сервера <---", classes="title"),
-                                  Vertical(Link('FirstByte', url='https://firstbyte.ru/?from=142429', classes='link'), classes="link_container"),
+                                  Vertical(Link('Appletec', url='https://appletec.ru/?from=32434', classes='link'), classes="link_container"),
                                   classes='container_about2'),
                          Vertical(Static("О программе", classes="title"), 
                                   Static('''Автоматическая регистрация, верификация аккаунтов проекта Grass\nСоздано Expanse Crypto''', id='about', classes='about'), classes='container_about3'),
@@ -77,6 +77,7 @@ class MyInterface(App):
                                                 Static("Регистрация", classes="title"),
                                                 InfoInput(placeholder='Accounts file path', type='text', id='accounts'),
                                                 InfoInput(placeholder='Fixed imap for all acc', type='text', id='imap'),
+                                                InfoInput(placeholder='Forward mode', type='text', id='forward_mode'),
                                                 InfoInput(placeholder='Proxy file path', type='text', id='proxy'),
                                                 InfoInput(placeholder='Proxy rotate time (in seconds)', type='integer', id='rotate'),
                                                 InfoInput(placeholder='Captcha service', type='text', id='captcha_service'),
@@ -98,6 +99,7 @@ class MyInterface(App):
                                                 InfoInput(placeholder='Proxy file path', type='text', id='proxy'),
                                                 InfoInput(placeholder='Proxy rotate time (in seconds)', type='integer', id='rotate'),
                                                 InfoInput(placeholder='Proxy file for imap (Optional)', type='text', id='imap_proxy'),
+                                                InfoInput(placeholder='Forward mode', type='text', id='forward_mode'),
                                                 InfoInput(placeholder='Captcha service', type='text', id='captcha_service'),
                                                 InfoInput(placeholder='Captcha api key', type='text', id='captcha_key'),
                                                 InfoInput(placeholder='Number of threads', type='integer', id = 'threads'),

@@ -1,9 +1,29 @@
 import asyncio
 import aiosqlite
+from .migrations import MIGRATIONS
 
 class DataBase:
     _connection = None
     _lock = asyncio.Lock()
+
+    @classmethod
+    async def migration(cls):
+        async with cls._lock:
+            conn = await cls.get_connection()
+
+            async with conn.execute("SELECT name FROM schema_migrations") as cursor:
+                applied = {row[0] async for row in cursor}
+
+            for name, sql in MIGRATIONS:
+                if name not in applied:
+                    try:
+                        print(f"Applying migration: {name}")
+                        await conn.execute(sql)
+                        await conn.execute("INSERT INTO schema_migrations (name) VALUES (?)", (name,))
+                        await conn.commit()
+                        print("All migrations applied.")
+                    except Exception as e:
+                        print(f"Error applying migration {name}: {e}")
 
     @classmethod
     async def get_connection(cls):
@@ -51,6 +71,12 @@ class DataBase:
         ''')
         await cls._connection.commit()
 
+        await cls._connection.execute('''
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                name TEXT PRIMARY KEY
+            )
+        ''')
+        await cls._connection.commit()
         return cls._connection
 
     @classmethod

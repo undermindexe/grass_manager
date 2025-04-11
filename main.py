@@ -28,6 +28,7 @@ semaphore = asyncio.Semaphore(args.threads)
 
 class Grass(Browser, Account, Wallet):
     def __init__(self, email: str = None,
+                 forward_email: str = None,
                  password: str = None, 
                  email_password: str = None, 
                  imap_domain: str = None, 
@@ -39,6 +40,7 @@ class Grass(Browser, Account, Wallet):
         Wallet.__init__(self)
         self.email = email
         self.password = password
+        self.forward_email = forward_email
         self.email_password = email_password
         self.imap_domain = imap_domain
         self.proxymanager = proxymanager
@@ -78,7 +80,7 @@ class Grass(Browser, Account, Wallet):
             async with self.session.post(url = self.url['sendOtp'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
                     logger.info(f'{self.email} | Success send OTP massage for {self.email}')
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(20)
                     return True
                 else:
                     logger.info(f'{self.email} | Error send OTP massage for {self.email} | Status: {response.status}')
@@ -127,7 +129,7 @@ class Grass(Browser, Account, Wallet):
                     if await self.save_session():
                         return True
                 else:
-                    raise LoginError('Login error')
+                    raise LoginError()
         except Exception as e:
             if not self.session.closed:
                 await self.session.close()
@@ -168,7 +170,7 @@ class Grass(Browser, Account, Wallet):
                     await self.save_session()
                     return True
                 else:
-                    raise LoginError('Verify OTP error')
+                    raise LoginError()
         except Exception as e:
             if not self.session.closed:
                 await self.session.close()
@@ -202,6 +204,7 @@ class Grass(Browser, Account, Wallet):
             async with self.session.post(url = self.url['setPassword'], headers= self.headers_retrive_user, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
                     logger.info(f'{self.email} | Success send setup password link for email')
+                    await asyncio.sleep(20)
                     return True
                 else:
                     raise LoginError('Send setup password link error')
@@ -316,8 +319,9 @@ class Grass(Browser, Account, Wallet):
         try:
             logger.debug(f'{self.email} | Save in db')
             await DataBase.execute('''
-            INSERT INTO Accounts (email, ref_reg, username, email_password, imap_domain) VALUES (?, ?, ?, ?, ?)
-            ''', (self.email, self.ref_reg, self.username, self.email_password, self.imap_domain))
+            INSERT INTO Accounts (email, ref_reg, username, email_password, imap_domain, forward_email) VALUES (?, ?, ?, ?, ?, ?)
+            ''', (self.email, self.ref_reg, self.username, self.email_password, self.imap_domain, self.forward_email))
+
             logger.info(f'{self.email} | Account has been saved in database')
         finally:
             if not self.session.closed:
@@ -351,7 +355,7 @@ class Grass(Browser, Account, Wallet):
                 else:
                     logger.info(f'{self.email} | Login via OTP')
                     if await self.send_otp(action = 'login'):
-                        otp_code = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
+                        otp_code = await self.get_email(f'SUBJECT "Your One Time Password for Grass is"')
                         logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
                         if await self.verify_otp(otp_code):
                             return True
@@ -530,7 +534,7 @@ class Grass(Browser, Account, Wallet):
                 response = await self.session.post(url=self.url['sendWalletAddressEmailVerification'], headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}")
                 if response.status == 200:
                     logger.info(f'{self.email} | Send wallet verification email: {response.status}')
-                    await asyncio.sleep(15)
+                    await asyncio.sleep(20)
                 else:
                     logger.error(f'{self.email} | Send wallet verification email: {response.status}')
                     raise ConnectWallet
@@ -548,15 +552,18 @@ class Grass(Browser, Account, Wallet):
             await self.session.close()
 
 
-    async def get_email(self, request): 
-        email = await asyncio.to_thread(search_mail, request=request, email=self.email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
+    async def get_email(self, request):
+        if self.forward_email:
+            email = await asyncio.to_thread(search_mail, request=request, email=self.forward_email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
+        else:
+            email = await asyncio.to_thread(search_mail, request=request, email=self.email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
         return email
 
     async def email_verification(self, subject):
         try:
             if subject == '"Verify Your Email for Grass"':
                 await self.send_email_verification()
-                email = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT {subject}')
+                email = await self.get_email(f'SUBJECT {subject}')
                 token = email.split('token=')[1].split('/')[0]
                 logger.debug(f'{self.email} | Token verified email: {token}')
                 if await self.click_email_verification(token):
@@ -565,12 +572,12 @@ class Grass(Browser, Account, Wallet):
                 else:
                     return False
             elif subject == '"Verify Your Wallet Address for Grass"':
-                email = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT {subject}')
+                email = await self.get_email(f'SUBJECT {subject}')
                 token = email.split('token=')[1].split('/')[0]
                 logger.debug(f'{self.email} | Token verified wallet: {token}')
                 return token
             elif subject == '"Set Password"':
-                email = await self.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT {subject}')
+                email = await self.get_email(f'SUBJECT {subject}')
                 token = email.split('token=')[1].split('/')[0]
                 logger.debug(f'{self.email} | Token setup password: {token}')
                 return token
@@ -614,21 +621,29 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error verification {e}')
             raise e
 
-def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.txt', domain: str = ''):
+def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.txt', domain: str = '', forward_mode: bool = False):
     list_accounts = []
     with open(accounts, 'r', encoding= 'utf-8') as file:
         for string in file.readlines():
             string = string.strip()
             if ':' in string:
                 string = tuple(string.split(':'))
-                if validate_email(string[0]) and len(string) == 2 and domain:
-                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=domain, ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
-                    logger.info(f'Select mode email:email_pass | {string}')
-                    list_accounts.append(account)
-                elif validate_email(string[0]) and len(string) == 3:
-                    account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=string[2], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass:imap_domain
-                    logger.info(f'Select mode email:email_pass:imap_domain | {string}')
-                    list_accounts.append(account)
+                if forward_mode:
+                    if validate_email(string[0]) and len(string) == 3 and domain:
+                        account = Grass(email = string[0], password = generate_pass(), forward_email=string[1], email_password=string[2], imap_domain=domain, ref_reg = random.choice(reflist), proxymanager=proxy)  # email:forward_email:email_pass
+                        logger.info(f'Select mode email:forward_email:email_pass | {string}')
+                        list_accounts.append(account)
+                    elif validate_email(string[0]) and len(string) == 4:
+                        account = Grass(email = string[0], password = generate_pass(), forward_email=string[1], email_password=string[2], imap_domain=string[3], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:forward_email:email_pass
+                else:
+                    if validate_email(string[0]) and len(string) == 2 and domain:
+                        account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=domain, ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
+                        logger.info(f'Select mode email:email_pass | {string}')
+                        list_accounts.append(account)
+                    elif validate_email(string[0]) and len(string) == 3:
+                        account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=string[2], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass:imap_domain
+                        logger.info(f'Select mode email:email_pass:imap_domain | {string}')
+                        list_accounts.append(account)
             else:
                 logger.error(f'Error parsing account | {string}')
     return list_accounts
@@ -662,7 +677,7 @@ async def worker_reg(account: Grass):
             else:
                 await account.get_proxy()
                 if await account.send_otp(action = 'register'):
-                    otp_code = await account.get_email(f'FROM "no-reply@grassfoundation.io" SUBJECT "Your One Time Password for Grass is"')
+                    otp_code = await account.get_email(f'SUBJECT "Your One Time Password for Grass is"')
                     logger.info(f'{account.email} | Success get OTP Code: {otp_code}')
                     if await account.verify_otp(otp_code):
                         await account.save_account()
@@ -748,6 +763,8 @@ async def ui():
 
 async def main(new_args = None):
     try:
+        await DataBase.migration()
+
         if new_args:
             logger.debug(f'{new_args}')
             global args, semaphore
@@ -760,7 +777,7 @@ async def main(new_args = None):
         if args.action == 'registration':
             proxy = ProxyManager(get_proxies(args.proxy), args.rotate)
             reflist = get_ref(args.ref)
-            accounts = get_accounts(reflist, proxy, accounts = args.accounts, domain = args.imap)
+            accounts = get_accounts(reflist, proxy, accounts = args.accounts, domain = args.imap, forward_mode=args.forward_mode)
             tasks = [worker_reg(a) for a in accounts]
             await asyncio.gather(*tasks, return_exceptions=True)
             logger.info(f'END Registration')
@@ -808,7 +825,7 @@ async def main(new_args = None):
 
 if __name__ =='__main__':
     try:
-        print('Grass Faker Autoreger v1.0')
+        print('Grass Account Manager v1.1.4')
         if args.action == None:
             new_args = asyncio.run(ui())
             asyncio.run(main(new_args))

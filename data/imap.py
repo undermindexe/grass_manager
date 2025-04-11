@@ -104,9 +104,12 @@ def search_mail(request,
                     logger.debug(f'{email} | Search mail in folder "{i}"')
                     mailbox.select(i)
                     status, search = mailbox.search('utf-8', request)
-                    if status == 'OK':
-                        mails = reversed(search[0].split())
-                        for msg in mails:
+                    if status == 'OK' and search != [None]:
+                        logger.debug(search)
+                        mails = latest_sort(mailbox, msgs=search[0].split())
+                        sorted_mails = sorted(mails, key=lambda x: x[1], reverse=True)
+                        logger.debug(mails)
+                        for msg, _ in sorted_mails:
                             logger.info(f'{email} | Found message')
                             if 'Your One Time Password for Grass is' in request:
                                 status, data = mailbox.fetch(msg, '(BODY[HEADER.FIELDS (SUBJECT)])')
@@ -123,7 +126,18 @@ def search_mail(request,
             if error <= 5:
                 logger.error(f'{email} | {e}')
                 time.sleep(15)
-            
+
+def latest_sort(mailbox, msgs):
+    msg_dates = []
+    for msg_id in msgs:
+        status, date_data = mailbox.fetch(msg_id, '(INTERNALDATE)')
+        if status != 'OK':
+            continue
+        match = re.search(r'"(.+?)"', date_data[0].decode())
+        if match:
+            msg_date = time.strptime(match.group(1), "%d-%b-%Y %H:%M:%S %z")
+            msg_dates.append((msg_id, msg_date))
+    return msg_dates
 
 def parse_proxy(proxy: str):
     result = re.split(r'[:,@]', proxy)

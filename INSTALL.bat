@@ -1,9 +1,0 @@
-@echo off
-echo Creating virtual environment...
-python -m venv venv
-echo Activation virtual environment...
-call venv\Scripts\activate
-echo Instalation require libraries...
-pip install -r requirements.txt
-echo Installation successful! Now activate the venv by running the command venv\Scripts\activate before starting the bot with python main.py..
-pause
