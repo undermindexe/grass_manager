@@ -634,7 +634,9 @@ def get_accounts(reflist: list, proxy: ProxyManager, accounts: str = 'accounts.t
                         logger.info(f'Select mode email:forward_email:email_pass | {string}')
                         list_accounts.append(account)
                     elif validate_email(string[0]) and len(string) == 4:
-                        account = Grass(email = string[0], password = generate_pass(), forward_email=string[1], email_password=string[2], imap_domain=string[3], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:forward_email:email_pass
+                        account = Grass(email = string[0], password = generate_pass(), forward_email=string[1], email_password=string[2], imap_domain=string[3], ref_reg = random.choice(reflist), proxymanager=proxy)  # email:forward_email:email_pass:imap_domain
+                        logger.info(f'Select mode email:forward_email:email_pass:imap_domain | {string}')
+                        list_accounts.append(account)
                 else:
                     if validate_email(string[0]) and len(string) == 2 and domain:
                         account = Grass(email = string[0], password = generate_pass(), email_password=string[1], imap_domain=domain, ref_reg = random.choice(reflist), proxymanager=proxy)  # email:email_pass
@@ -825,7 +827,7 @@ async def main(new_args = None):
 
 if __name__ =='__main__':
     try:
-        print('Grass Account Manager v1.1.4')
+        print('Grass Account Manager v1.1.5')
         if args.action == None:
             new_args = asyncio.run(ui())
             asyncio.run(main(new_args))
