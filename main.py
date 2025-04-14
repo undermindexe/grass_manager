@@ -828,7 +828,6 @@ async def main(new_args = None):
 
 if __name__ =='__main__':
     try:
-        print('Grass Account Manager v1.1.5')
         if args.action == None:
             new_args = asyncio.run(ui())
             asyncio.run(main(new_args))
