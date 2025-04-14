@@ -20,7 +20,7 @@ from data.import_export import import_acc, export_acc
 from aiosqlite import Error as DatabaseError
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception_type, RetryError
 
-from data.ui import MyInterface
+from data.ui import run_ui
 
 args = get_args()
 semaphore = asyncio.Semaphore(args.threads)
@@ -758,10 +758,11 @@ async def worker_import(account: Grass):
 
 
 async def ui():
-    app = MyInterface()
-    new_args = await app.run_async()
-    print(new_args)
-    return new_args
+    args = run_ui()
+    print(args)
+    if args is None:
+        raise SystemExit("No arguments provided")
+    return args
 
 async def main(new_args = None):
     try:

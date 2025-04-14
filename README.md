@@ -21,7 +21,9 @@ This is a Python program designed for the automatic **registration**, **verifica
 
 For those who only need basic functionality, a terminal interface has been provided for easy launching without the need for manual console or batch file usage.
 
-![Main window](https://i.imgur.com/11d7TXq.png)
+<div align="center">
+<img src="assets/GAM.png" alt="Icon" width="650"/>
+</div>
 
 ---
 
@@ -44,11 +46,7 @@ For the database:
 
 ### Compatibility
 
-The program **works on Windows, Linux, and MacOS**
-
-It is recommended to **use Windows 11** for the interface mode. On Windows 10 and older versions, the visual appearance of the interface deteriorates and some features, such as pasting data into fields using Ctrl + V, are unavailable. However, everything still functions overall, albeit with some inconveniences in usability and aesthetics. This is due to the fact that the standard Windows terminal did not previously support ANSI, and the older the Windows version, the more the visuals and usability are affected 🥲
-
-Linux and MacOS do not have these shortcomings
+The program **works on Windows 8+**
 
 ### Install
 
@@ -72,7 +70,9 @@ Linux and MacOS do not have these shortcomings
 
 Для тех кому достаточно базового функционала - сделан терминальный интерфейс, для удобства запуска, без ручного использования консоли или bat файлов
 
-![Главный экран](https://i.imgur.com/11d7TXq.png)
+<div align="center">
+<img src="assets/GAM.png" alt="Icon" width="650"/>
+</div>
 
 ---
 
@@ -95,11 +95,7 @@ Linux and MacOS do not have these shortcomings
 
 ### Совместимость
 
-Программа работает на Windows, Linux и MacOS
-
-С интерфейсом **рекомендуется использовать Windows 11**. На Windows 10 и старше ухудшается визуал интерфейса, и недоступны некоторые возможности вроде вставки данных в поля через Ctrl + V. Но в целом всё по прежнему работает, недостатки в удобстве и визуале. Это связанно с тем, что стандартный Windows терминал ранее не поддерживал ANSI, и чем старее будет Windows, тем больше ухудшается визуал и удобство 🥲
-
-Linux и MacOS лишены этих недостатков
+Программа работает на0 **Windows 8+**
 
 ### Установка
 
