@@ -1,5 +1,4 @@
 import ssl
-import quopri
 
 from socks import create_connection
 from socks import PROXY_TYPE_SOCKS4
@@ -10,12 +9,6 @@ from imaplib import IMAP4
 from imaplib import IMAP4_PORT
 from imaplib import IMAP4_SSL_PORT
 
-import re
-
-from logger import logger
-
-import time
-import random
 
 class SocksIMAP4(IMAP4):
 
@@ -70,75 +63,3 @@ class SocksIMAP4SSL(SocksIMAP4):
         
     def open(self, host='', port=IMAP4_PORT, timeout=None):
         SocksIMAP4.open(self, host, port, timeout)
-
-def search_mail(request,
-                email,
-                password,
-                imap_server,
-                proxy,
-                imap_proxy = None):
-    if imap_proxy:
-        with open(imap_proxy, 'r', encoding='utf-8') as file:
-            proxies = file.readlines()
-            proxy = parse_proxy(random.choice(proxies).strip())
-    else:
-        proxy = parse_proxy(proxy)
-    proxy_username, proxy_password, proxy_addr, proxy_port = proxy[0], proxy[1], proxy[2], int(proxy[3])
-    error = 0
-    while error <= 5:
-        try:
-            logger.debug(f'{email} | {password} | {imap_server} | {proxy}')
-
-            mailbox = SocksIMAP4SSL(host=imap_server, port=993,
-                                    proxy_addr=proxy_addr, proxy_port=proxy_port, 
-                                    proxy_type="socks5", username=proxy_username, 
-                                    password=proxy_password)
-            mailbox.login(email, password)
-
-            typ, data = mailbox.list()
-            logger.debug(data)
-            folders = reversed([re.search(br'["|/] (.+)', folder).group(1).decode('utf-8') for folder in data])
-            attempt = 0
-            while attempt < 6:
-                for i in folders:
-                    logger.debug(f'{email} | Search mail in folder "{i}"')
-                    mailbox.select(i)
-                    status, search = mailbox.search('utf-8', request)
-                    if status == 'OK' and search != [None]:
-                        logger.debug(search)
-                        mails = latest_sort(mailbox, msgs=search[0].split())
-                        sorted_mails = sorted(mails, key=lambda x: x[1], reverse=True)
-                        logger.debug(mails)
-                        for msg, _ in sorted_mails:
-                            logger.info(f'{email} | Found message')
-                            if 'Your One Time Password for Grass is' in request:
-                                status, data = mailbox.fetch(msg, '(BODY[HEADER.FIELDS (SUBJECT)])')
-                                result = quopri.decodestring(data[0][1]).decode('utf-8')
-                                result = result.strip()[-6:]
-                            else:
-                                status, data = mailbox.fetch(msg, '(BODY[TEXT])')
-                                result = quopri.decodestring(data[0][1]).decode('utf-8')
-                            return result
-                attempt += 1
-                time.sleep(10)
-        except Exception as e:
-            error += 1
-            if error <= 5:
-                logger.error(f'{email} | {e}')
-                time.sleep(15)
-
-def latest_sort(mailbox, msgs):
-    msg_dates = []
-    for msg_id in msgs:
-        status, date_data = mailbox.fetch(msg_id, '(INTERNALDATE)')
-        if status != 'OK':
-            continue
-        match = re.search(r'"(.+?)"', date_data[0].decode())
-        if match:
-            msg_date = time.strptime(match.group(1), "%d-%b-%Y %H:%M:%S %z")
-            msg_dates.append((msg_id, msg_date))
-    return msg_dates
-
-def parse_proxy(proxy: str):
-    result = re.split(r'[:,@]', proxy)
-    return result

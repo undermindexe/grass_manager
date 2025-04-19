@@ -1,7 +1,7 @@
 import argparse
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--action", type=str, help="registration, imap, verification, update, import, export")
     parser.add_argument("--accounts", type=str, default='accounts.txt', help="path to log:mail_pass file, default='accounts.txt'")

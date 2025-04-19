@@ -10,7 +10,7 @@ from data.db import DataBase
 from data.wallet import Wallet
 from data.browser import Browser
 from data.captcha import CaptchaService
-from data.imap import search_mail
+from data.imap_repository import IMAPRepository
 
 from data.service import *
 from data.exception import *
@@ -554,9 +554,9 @@ class Grass(Browser, Account, Wallet):
 
     async def get_email(self, request):
         if self.forward_email:
-            email = await asyncio.to_thread(search_mail, request=request, email=self.forward_email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
+            email = await asyncio.to_thread(IMAPRepository.search_mail, request=request, email=self.forward_email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
         else:
-            email = await asyncio.to_thread(search_mail, request=request, email=self.email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
+            email = await asyncio.to_thread(IMAPRepository.search_mail, request=request, email=self.email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
         return email
 
     async def email_verification(self, subject):
