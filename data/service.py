@@ -33,7 +33,8 @@ def get_user_agent():
     else:
         logger.info(f'Generate user-agent list')
         for _ in range(150):
-            USER_AGENTS.append(UserAgent('Chrome', 'Windows', 129.0, 0.0, 'desktop').random)
+            USER_AGENTS.append(UserAgent('Chrome', 'Windows', 131.0, 0.0, 'desktop').random)
+            print(USER_AGENTS[-1])
         return random.choice(USER_AGENTS)
 
 def get_random_mail(n):
