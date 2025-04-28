@@ -125,7 +125,7 @@ def get_last_mail(mailbox: SocksIMAP4SSL, msgs: list):
     """
     msg_dates = []
     for msg_id in msgs:
-        status, date_data = mailbox.fetch(str(msg_id), '(INTERNALDATE)')
+        status, date_data = mailbox.fetch(msg_id, '(INTERNALDATE)')
         if status != 'OK':
             continue
         match = re.search(r'"(.+?)"', date_data[0].decode())

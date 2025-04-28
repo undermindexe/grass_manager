@@ -236,6 +236,8 @@ class Grass(Browser, Account, Wallet):
         logger.info(f'{self.email} | Session has been saved in database')
         return True
 
+
+
     @retry(
             stop = stop_after_attempt(6),
             retry = (retry_if_exception_type(UpdateError)),
@@ -268,6 +270,7 @@ class Grass(Browser, Account, Wallet):
                     self.totalpoints = retrieveUser['result']['data']['totalPoints']
                     self.parent_referrals = ','.join(retrieveUser['result']['data']['parentReferrals'])
                     logger.info(f'{self.email} | Success get user info')
+                    await self.reward_claim()
                     await self.save_info()
                     return True
                 else:
@@ -282,6 +285,71 @@ class Grass(Browser, Account, Wallet):
                 await self.swap_proxy()
                 self.error = 0
             raise UpdateError('Update info error')
+        finally:
+            await self.session.close()
+
+    async def reward_claim(self):
+        try:
+            logger.info(f'{self.email} | Check reward claim')
+            await self.open_session()
+            await self.update_headers()
+
+            if self.headers_retrive_user['Authorization'] == None:
+                logger.error(f'{self.email} | Error reward claim. Enought Authorization token')
+                return False
+
+            REWARD_CLAIM_LIST = {
+                '0001': 373,
+                '0002': 373,
+                '0003': 2595,
+                '0004': 11351,
+                '0005': 36351,
+                '0006': 118247,
+                '0007': 375443,
+                '0008': 2767564,
+                '0009': 7394899,
+                '0010': 49616938
+            }
+
+            logger.info(f'{self.email} | Total points: {self.totalpoints}, Reward claimed: {self.reward_claimed}')
+            if self.totalpoints > 373 and self.totalpoints > REWARD_CLAIM_LIST[self.reward_claimed]:
+                logger.debug('Need to claim reward')
+                start_tier = 0 
+                last_tier = 0 
+                for index, tier in enumerate(REWARD_CLAIM_LIST.items(), start=1):
+                    if self.reward_claimed == tier[0]:
+                        start_tier = index
+                    if self.totalpoints > tier[1]:
+                        last_tier = index
+                        continue
+                    else:
+                        break
+                logger.debug(f'Need to claim {last_tier} - {start_tier}')
+                if last_tier - start_tier >= 1:
+                    available_tiers = last_tier - start_tier
+                    logger.info(f'{self.email} | Reward claim available: {available_tiers}')
+                
+                    for i in range(1,available_tiers + 1):
+                        logger.debug(f'{self.email} | Claim reward: {i}')
+
+                        async with self.session.post(url = self.url['claimReward'], headers= self.headers_retrive_user, proxy = f"http://{self.proxy.link}") as response:
+                            logger.debug(f'{self.email} | Response status: {response.status}')
+                            if response.status == 200:
+                                logger.info(f'{self.email} | Reward claim success: {i}')
+                            else:
+                                logger.error(f'{self.email} | Reward claim error: {response.status}')
+                                print(await response.text())
+                            await asyncio.sleep(5)
+                    await self.update_info()
+        except Exception as e:
+            if not self.session.closed:
+                await self.session.close()
+            logger.error(f'{self.email} | Error Reward claim | {e}')
+            self.error += 1
+            if self.error > 2:
+                await self.swap_proxy()
+                self.error = 0
+            raise UpdateError('Reward claim error')
         finally:
             await self.session.close()
 
@@ -356,6 +424,9 @@ class Grass(Browser, Account, Wallet):
                     logger.info(f'{self.email} | Login via OTP')
                     if await self.send_otp(action = 'login'):
                         otp_code = await self.get_email(f'SUBJECT "Your One Time Password for Grass is"')
+                        if not isinstance(otp_code, str):
+                            logger.error(f'{self.email} | Error get OTP Code: {otp_code}')
+                            return False
                         logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
                         if await self.verify_otp(otp_code):
                             return True
@@ -552,7 +623,7 @@ class Grass(Browser, Account, Wallet):
             await self.session.close()
 
 
-    async def get_email(self, request):
+    async def get_email(self, request) -> str:
         if self.forward_email:
             email = await asyncio.to_thread(IMAPRepository.search_mail, request=request, email=self.forward_email, password=self.email_password, imap_server=self.imap_domain, proxy=self.proxy.link, imap_proxy = args.imap_proxy)
         else:
@@ -585,7 +656,7 @@ class Grass(Browser, Account, Wallet):
             logger.error(f'{self.email} | Error verification {e}')
             raise e
 
-    async def get_proxy(self):  # Обернуть get в логику get proxy
+    async def get_proxy(self): 
         while True:
             proxy = await self.proxymanager.get()
             if proxy.link != 'not_available_proxy:1111':
@@ -795,8 +866,8 @@ async def main(new_args = None):
             import_accounts = [acc for acc in import_accounts if acc[0] not in database_accs]
             await DataBase.executemany(
                 '''
-                INSERT INTO Accounts (email, password, email_password, imap_domain, username, user_agent, referal_code, wallet, private_key, seed) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO Accounts (email, password, email_password, imap_domain, username, user_agent, referal_code, wallet, private_key, seed, forward_email) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', 
                 import_accounts)
             logger.info(f'END import accounts')

@@ -34,7 +34,6 @@ def get_user_agent():
         logger.info(f'Generate user-agent list')
         for _ in range(150):
             USER_AGENTS.append(UserAgent('Chrome', 'Windows', 131.0, 0.0, 'desktop').random)
-            print(USER_AGENTS[-1])
         return random.choice(USER_AGENTS)
 
 def get_random_mail(n):
@@ -116,6 +115,3 @@ async def add_email_pass(db, fixed_imap: str = None, path: str = 'accounts.txt')
 
     except Exception as e:
         print(e)
-
-
-

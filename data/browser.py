@@ -23,7 +23,8 @@ class Browser:
             'sendOtp': 'https://api.getgrass.io/sendOtp',
             'verifyOtp': 'https://api.getgrass.io/verifyOtp',
             'setPassword': 'https://api.getgrass.io/setPassword',
-            'resetPassword': 'https://api.getgrass.io/resetPassword'
+            'resetPassword': 'https://api.getgrass.io/resetPassword',
+            'claimReward': 'https://api.getgrass.io/claimReward'
         }
         self.user_agent = user_agent
         self.proxy = proxy
@@ -32,9 +33,9 @@ class Browser:
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.9',
             'Content-Type': 'application/json',
-            'Origin': 'https://app.getgrass.io',
+            'Origin': 'https://app.grass.io/',
             'Priority': 'u=1, i',
-            'Referer': 'https://app.getgrass.io/',
+            'Referer': 'https://app.grass.io/',
             'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not(A:Brand";v="99"',
             'Sec-Ch-Ua-Mobile': '?0',
             'Sec-Ch-Ua-Platform': '"Windows"',
@@ -48,9 +49,9 @@ class Browser:
             'Accept': 'application/json, text/plain, */*',
             'Accept-language': 'en-US,en;q=0.9',
             'Authorization': None,
-            'Origin': 'https://app.getgrass.io',
+            'Origin': 'https://app.grass.io',
             'Priority': 'u=1, i',
-            'Referer': 'https://app.getgrass.io/',
+            'Referer': 'https://app.grass.io/',
             'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not(A:Brand";v="99"', 
             'Sec-Ch-Ua-Mobile': '?0',
             'Sec-Ch-Ua-Platform': '"Windows"',
@@ -67,9 +68,9 @@ class Browser:
             ('Headers',''),
             ('Access-Control-Request-','POST'),
             ('Method',''),
-            ('Origin','https://app.getgrass.io'),
+            ('Origin','https://app.grass.io/'),
             ('Priority','u=1, i'),
-            ('Referer','https://app.getgrass.io/'),
+            ('Referer','https://app.grass.io/'),
             ('Sec-Fetch-Dest','empty'),
             ('Sec-Fetch-Mode','cors'),
             ('Sec-Fetch-Site','same-site'),
@@ -87,8 +88,8 @@ class Browser:
 
     async def update_headers(self):
         ver = await self.get_ua_version()
-        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not:A-Brand";v="24"'
-        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Chromium";v="{ver}", "Not:A-Brand";v="24"'
+        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Not-A.Brand";v="8", "Chromium";v="{ver}"'
+        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Not-A.Brand";v="8", "Chromium";v="{ver}"'
 
     async def open_session(self):
         if self.session.closed:
