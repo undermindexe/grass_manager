@@ -12,31 +12,33 @@ class Browser:
         self.proxy = None
 
         self.url = {
-            'register': 'https://api.getgrass.io/register',
-            'login': 'https://api.getgrass.io/login',
-            'retrieveUser': 'https://api.getgrass.io/retrieveUser',
-            'sendEmailVerification': 'https://api.getgrass.io/sendEmailVerification',
-            'confirmEmail': 'https://api.getgrass.io/confirmEmail', 
-            'verifySignedMessage': 'https://api.getgrass.io/verifySignedMessage',
-            'sendWalletAddressEmailVerification': 'https://api.getgrass.io/sendWalletAddressEmailVerification',
-            'confirmWalletAddress': 'https://api.getgrass.io/confirmWalletAddress',
-            'sendOtp': 'https://api.getgrass.io/sendOtp',
-            'verifyOtp': 'https://api.getgrass.io/verifyOtp',
-            'setPassword': 'https://api.getgrass.io/setPassword',
-            'resetPassword': 'https://api.getgrass.io/resetPassword',
-            'claimReward': 'https://api.getgrass.io/claimReward'
+            'register': 'https://api.grass.io/register',
+            'login': 'https://api.grass.io/login',
+            'retrieveUser': 'https://api.grass.io/retrieveUser',
+            'sendEmailVerification': 'https://api.grass.io/sendEmailVerification',
+            'confirmEmail': 'https://api.grass.io/confirmEmail', 
+            'verifySignedMessage': 'https://api.grass.io/verifySignedMessage',
+            'sendWalletAddressEmailVerification': 'https://api.grass.io/sendWalletAddressEmailVerification',
+            'confirmWalletAddress': 'https://api.grass.io/confirmWalletAddress',
+            'sendOtp': 'https://api.grass.io/sendOtp',
+            'verifyOtp': 'https://api.grass.io/verifyOtp',
+            'setPassword': 'https://api.grass.io/setPassword',
+            'resetPassword': 'https://api.grass.io/resetPassword',
+            'claimReward': 'https://api.grass.io/claimReward'
         }
         self.user_agent = user_agent
         self.proxy = proxy
+        self.sec_ch_ua = '"Google Chrome";v="136", "Chromium";v="136", "Not.A/Brand";v="99"'
+
 
         self.headers_registration = {
-            'Accept': 'application/json, text/plain, */*',
+            'Accept': '*/*',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Content-Type': 'application/json',
-            'Origin': 'https://app.grass.io/',
+            'Content-Type': 'text/plain;charset=UTF-8',
+            'Origin': 'https://app.grass.io',
             'Priority': 'u=1, i',
             'Referer': 'https://app.grass.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not(A:Brand";v="99"',
+            'Sec-Ch-Ua': self.sec_ch_ua,
             'Sec-Ch-Ua-Mobile': '?0',
             'Sec-Ch-Ua-Platform': '"Windows"',
             'Sec-Fetch-Dest': 'empty',
@@ -52,7 +54,7 @@ class Browser:
             'Origin': 'https://app.grass.io',
             'Priority': 'u=1, i',
             'Referer': 'https://app.grass.io/',
-            'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not(A:Brand";v="99"', 
+            'Sec-Ch-Ua': self.sec_ch_ua, 
             'Sec-Ch-Ua-Mobile': '?0',
             'Sec-Ch-Ua-Platform': '"Windows"',
             'Sec-Fetch-Dest': 'empty',
@@ -88,8 +90,8 @@ class Browser:
 
     async def update_headers(self):
         ver = await self.get_ua_version()
-        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Not-A.Brand";v="8", "Chromium";v="{ver}"'
-        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Not-A.Brand";v="8", "Chromium";v="{ver}"'
+        self.headers_registration['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Not.A/Brand";v="99", "Chromium";v="{ver}"'
+        self.headers_retrive_user['Sec-Ch-Ua'] = f'"Google Chrome";v="{ver}", "Not.A/Brand";v="99", "Chromium";v="{ver}"'
 
     async def open_session(self):
         if self.session.closed:

@@ -6,7 +6,7 @@ CAPTCHA_PARAMS = {
     "captcha_type": "v2",
     "invisible_captcha": False,
     "sitekey": "6LeeT-0pAAAAAFJ5JnCpNcbYCBcAerNHlkK4nm6y",
-    "captcha_url": "https://app.getgrass.io/register"
+    "captcha_url": "https://app.grass.io"
 }
 
 

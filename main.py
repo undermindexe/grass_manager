@@ -57,9 +57,9 @@ class Grass(Browser, Account, Wallet):
             await self.open_session()
             await self.update_headers()
             logger.info(f'{self.email} | Send OTP {action} mail. Password: {self.password}| Proxy: {self.proxy.link}| Ref_code: {self.ref_reg}')
+            captcha = CaptchaService(args.captcha_service, args.captcha_key)
+            token = await captcha.get_captcha_token_async()
             if action == 'register':
-                captcha = CaptchaService(args.captcha_service, args.captcha_key)
-                token = await captcha.get_captcha_token_async()
                 json_data = {
                     "email": self.email,
                     "referralCode":self.ref_reg,
@@ -73,7 +73,7 @@ class Grass(Browser, Account, Wallet):
                     "email": self.email,
                     "referralCode":"",
                     "marketingEmailConsent": False,
-                    "recaptchaToken": "",
+                    "recaptchaToken": token,
                     "termsAccepted": False,
                     "page": "login"
                 }              
@@ -82,6 +82,9 @@ class Grass(Browser, Account, Wallet):
                     logger.info(f'{self.email} | Success send OTP massage for {self.email}')
                     await asyncio.sleep(20)
                     return True
+                if response.status == 429:
+                    logger.info(f'{self.email} | Too Many Requests SendOTP {self.email}')
+                    return False
                 else:
                     logger.info(f'{self.email} | Error send OTP massage for {self.email} | Status: {response.status}')
                     raise RegistrationError()
@@ -105,17 +108,18 @@ class Grass(Browser, Account, Wallet):
             retry = (retry_if_exception_type(LoginError)),
             wait = wait_random(5,7)
     )
-    async def login(self, captcha = None):
+    async def login(self):
         try:
             logger.debug(f'{self.email} | Account login...')
             await self.open_session()
             await self.update_headers()
+            captcha = CaptchaService(args.captcha_service, args.captcha_key)
+            token = await captcha.get_captcha_token_async()
             json_data = {
                     'username': self.email,
-                    'password': self.password
-            }
-            if captcha:
-                json_data['recaptchaToken'] = captcha
+                    'password': self.password,
+                    'recaptchaToken': token
+                }
             async with self.session.post(url = self.url['login'], headers= self.headers_registration, data = json.dumps(json_data), proxy = f"http://{self.proxy.link}") as response:
                 if response.status == 200:
                     logger.info(f'{self.email} | Login Success')
@@ -129,6 +133,7 @@ class Grass(Browser, Account, Wallet):
                     if await self.save_session():
                         return True
                 else:
+                    print(await response.text())
                     raise LoginError()
         except Exception as e:
             if not self.session.closed:
@@ -416,20 +421,19 @@ class Grass(Browser, Account, Wallet):
             if not (bool(row[0]) and bool(row[1])):
                 logger.info(f'{self.email} | No active session. Login...')
                 self.password = row[3]
-                if self.password != None:
-                    logger.info(f'{self.email} | Login via password')
-                    if await self.login():
-                        return True
-                else:
-                    logger.info(f'{self.email} | Login via OTP')
-                    if await self.send_otp(action = 'login'):
-                        otp_code = await self.get_email(f'SUBJECT "Your One Time Password for Grass is"')
-                        if not isinstance(otp_code, str):
-                            logger.error(f'{self.email} | Error get OTP Code: {otp_code}')
-                            return False
-                        logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
-                        if await self.verify_otp(otp_code):
+                logger.info(f'{self.email} | Send OTP code')
+                if await self.send_otp(action = 'login'):
+                    if self.password != None:
+                        logger.info(f'{self.email} | Login via password')
+                        if await self.login():
                             return True
+                    otp_code = await self.get_email(f'SUBJECT "Your One Time Password for Grass is"')
+                    if not isinstance(otp_code, str):
+                        logger.error(f'{self.email} | Error get OTP Code: {otp_code}')
+                        return False
+                    logger.info(f'{self.email} | Success get OTP Code: {otp_code}')
+                    if await self.verify_otp(otp_code):
+                        return True          
             else:
                 logger.info(f'{self.email} | An active session is in use')
                 self.access_token = row[0]
