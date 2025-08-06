@@ -1,22 +1,38 @@
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QPushButton, QLabel, QLineEdit, 
-                             QTextEdit, QStackedWidget, QScrollArea, QFrame,
-                             QTabWidget, QToolBar, QStatusBar, QFileDialog)
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QLineEdit,
+    QTextEdit,
+    QStackedWidget,
+    QScrollArea,
+    QFrame,
+    QTabWidget,
+    QToolBar,
+    QStatusBar,
+    QFileDialog,
+)
 from PySide6.QtCore import Qt, QSize, QSettings, QThread, Signal, Slot
 from PySide6.QtGui import QFont, QPalette, QColor, QAction, QIcon
 from .ui_text import DEFAULT_VALUES, DEFAULT_DESCRIPTION
 from .db import DataBase
+from .custom_logger import logger
 import asyncio
 import os
+
 
 class DatabaseInitializer(QThread):
     finished = Signal()
     error = Signal(str)
-    
+
     def __init__(self, window):
         super().__init__()
         self.window = window
-        
+
     def run(self):
         try:
             loop = asyncio.new_event_loop()
@@ -24,33 +40,38 @@ class DatabaseInitializer(QThread):
             loop.run_until_complete(self.window.initialize_database())
             self.finished.emit()
         except Exception as e:
+            logger.debug(f"DatabaseInitializer error: {e}")
             self.error.emit(str(e))
         finally:
             loop.close()
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Grass Faker - Account Manager")
         self.setMinimumSize(600, 800)
-        
-        self.settings = QSettings('GrassFaker', 'AccountManager')
-        
+
+        self.settings = QSettings("GrassFaker", "AccountManager")
+
         self.input_fields = {}
-        
+
         self.total_accounts = 0
         self.verified_accounts = 0
         self.total_points = 0
-        
+
         self.stats_labels = {}
-        
-        self.current_language = 'ru'
-        
+
+        self.current_language = "ru"
+
         self.last_action = None
         self.last_args = None
-        
+
+        # Флаг для предотвращения повторной инициализации
+        self.database_initialized = False
+
         self.setup_ui()
-        
+
         self.db_initializer = DatabaseInitializer(self)
         self.db_initializer.finished.connect(self.on_database_initialized)
         self.db_initializer.error.connect(self.on_database_error)
@@ -58,17 +79,21 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_database_initialized(self):
-        print("Database initialized successfully")
-        print(f"Stats: total={self.total_accounts}, verified={self.verified_accounts}, points={self.total_points}")
+        # Предотвращаем повторную инициализацию
+        if self.database_initialized:
+            return
+
+        self.database_initialized = True
         self.update_stats_display()
+        self.refresh_input_fields()
 
     @Slot(str)
     def on_database_error(self, error_message):
         print(f"Error initializing database: {error_message}")
 
     def update_stats_display(self):
-        print("Updating stats display...")
-        if hasattr(self, 'stats_labels'):
+        logger.debug("Updating stats display...")
+        if hasattr(self, "stats_labels"):
             for label_type, label in self.stats_labels.items():
                 if label_type == "total":
                     label.setText(str(self.total_accounts))
@@ -76,28 +101,48 @@ class MainWindow(QMainWindow):
                     label.setText(str(self.verified_accounts))
                 elif label_type == "points":
                     label.setText(str(self.total_points))
-            print("Stats display updated")
+            logger.debug("Stats display updated")
+
+    def refresh_input_fields(self):
+        """Обновляет значения полей ввода после инициализации базы данных"""
+        self.settings.sync()
+        for field_id, fields in self.input_fields.items():
+            saved_value = self.settings.value(f"settings/{field_id}", "")
+            if field_id == "threads" and not saved_value:
+                saved_value = "1"
+
+            # Обрабатываем как список, так и одиночный словарь
+            if isinstance(fields, list):
+                for field in fields:
+                    field["input"].setText(saved_value)
+            else:
+                fields["input"].setText(saved_value)
 
     async def initialize_database(self):
         try:
             await DataBase.migration()
-            
-            result = await DataBase.query_custom_row('SELECT COUNT(*) FROM Accounts')
+
+            result = await DataBase.query_custom_row("SELECT COUNT(*) FROM Accounts")
             self.total_accounts = result[0][0] if result else 0
-            
-            result = await DataBase.query_custom_row('SELECT COUNT(*) FROM Accounts WHERE wallet_verified = 1')
+
+            result = await DataBase.query_custom_row(
+                "SELECT COUNT(*) FROM Accounts WHERE wallet_verified = 1"
+            )
             self.verified_accounts = result[0][0] if result else 0
-            
-            result = await DataBase.query_custom_row('SELECT SUM(totalpoints) FROM Accounts')
+
+            result = await DataBase.query_custom_row(
+                "SELECT SUM(totalpoints) FROM Accounts"
+            )
             self.total_points = result[0][0] if result else 0
-            
+
         except Exception as e:
             if DataBase._connection:
                 await DataBase.close_connection()
             raise
 
     def setup_ui(self):
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QMainWindow {
                 background-color: #F3F3F3;
             }
@@ -218,7 +263,8 @@ class MainWindow(QMainWindow):
                 min-height: 0px;
                 max-height: 1000px;
             }
-        """)
+        """
+        )
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -228,7 +274,7 @@ class MainWindow(QMainWindow):
 
         self.nav_layout = QHBoxLayout()
         self.nav_layout.setSpacing(10)
-        
+
         buttons = [
             ("Main", lambda: self.show_screen("main")),
             ("Registration", lambda: self.show_screen("registration")),
@@ -236,15 +282,17 @@ class MainWindow(QMainWindow):
             ("Update", lambda: self.show_screen("update")),
             ("Import", lambda: self.show_screen("import")),
             ("Export", lambda: self.show_screen("export")),
-            ("IMAP", lambda: self.show_screen("imap"))
+            ("IMAP", lambda: self.show_screen("imap")),
         ]
-        
+
         for text, callback in buttons:
             btn = QPushButton(text)
-            btn.setToolTip(DEFAULT_DESCRIPTION[self.current_language].get(text.lower(), ""))
+            btn.setToolTip(
+                DEFAULT_DESCRIPTION[self.current_language].get(text.lower(), "")
+            )
             btn.clicked.connect(callback)
             self.nav_layout.addWidget(btn)
-            
+
         main_layout.addLayout(self.nav_layout)
 
         self.stacked_widget = QStackedWidget()
@@ -268,9 +316,10 @@ class MainWindow(QMainWindow):
 
         lang_layout = QHBoxLayout()
         lang_layout.setAlignment(Qt.AlignRight)
-        
-        self.lang_btn = QPushButton("RUS" if self.current_language == 'ru' else "ENG")
-        self.lang_btn.setStyleSheet("""
+
+        self.lang_btn = QPushButton("RUS" if self.current_language == "ru" else "ENG")
+        self.lang_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #ABF600;
                 color: #111111;
@@ -286,10 +335,11 @@ class MainWindow(QMainWindow):
             QPushButton:pressed {
                 background-color: #8CD600;
             }
-        """)
+        """
+        )
         self.lang_btn.clicked.connect(self.toggle_language)
         lang_layout.addWidget(self.lang_btn)
-        
+
         main_layout.addLayout(lang_layout)
 
         self.show_screen("main")
@@ -298,14 +348,16 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         title = QLabel("Registration")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #0e639c;
             margin-bottom: 20px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
@@ -315,10 +367,8 @@ class MainWindow(QMainWindow):
             ("Forward mode", "forward_mode"),
             ("Proxy file path", "proxy"),
             ("Proxy rotate time (in seconds)", "rotate"),
-            ("Captcha service", "captcha_service"),
-            ("Captcha api key", "captcha_key"),
             ("Referrals file path", "ref"),
-            ("Number of threads", "threads")
+            ("Number of threads", "threads"),
         ]
 
         for placeholder, field_id in fields:
@@ -335,14 +385,16 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         title = QLabel("Verification")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #0e639c;
             margin-bottom: 20px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
@@ -351,9 +403,7 @@ class MainWindow(QMainWindow):
             ("Proxy rotate time (in seconds)", "rotate"),
             ("Proxy file for imap (Optional)", "imap_proxy"),
             ("Forward mode", "forward_mode"),
-            ("Captcha service", "captcha_service"),
-            ("Captcha api key", "captcha_key"),
-            ("Number of threads", "threads")
+            ("Number of threads", "threads"),
         ]
 
         for placeholder, field_id in fields:
@@ -370,21 +420,23 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         title = QLabel("Update Information")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #0e639c;
             margin-bottom: 20px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
         fields = [
             ("Proxy file path", "proxy"),
             ("Proxy rotate time (in seconds)", "rotate"),
-            ("Number of threads", "threads")
+            ("Number of threads", "threads"),
         ]
 
         for placeholder, field_id in fields:
@@ -401,21 +453,23 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         title = QLabel("Import Accounts")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #0e639c;
             margin-bottom: 20px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
         fields = [
             ("Import file name", "file_name"),
             ("Separator", "separator"),
-            ("Format data", "format")
+            ("Format data", "format"),
         ]
 
         for placeholder, field_id in fields:
@@ -432,14 +486,16 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         title = QLabel("Export Accounts")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #0e639c;
             margin-bottom: 20px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
@@ -447,7 +503,7 @@ class MainWindow(QMainWindow):
             ("Export type", "export_type"),
             ("Export file name", "file_name"),
             ("Separator", "separator"),
-            ("Format data", "format")
+            ("Format data", "format"),
         ]
 
         for placeholder, field_id in fields:
@@ -464,20 +520,22 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         title = QLabel("Add IMAP Data")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #0e639c;
             margin-bottom: 20px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
         fields = [
             ("Accounts file path", "accounts"),
-            ("Fixed imap for all acc", "imap")
+            ("Fixed imap for all acc", "imap"),
         ]
 
         for placeholder, field_id in fields:
@@ -491,7 +549,15 @@ class MainWindow(QMainWindow):
         return widget
 
     def on_tab_changed(self, index):
-        tab_names = ["main", "registration", "verification", "update", "import", "export", "imap"]
+        tab_names = [
+            "main",
+            "registration",
+            "verification",
+            "update",
+            "import",
+            "export",
+            "imap",
+        ]
         if index < len(tab_names):
             self.show_description(tab_names[index])
 
@@ -500,47 +566,56 @@ class MainWindow(QMainWindow):
         panel.setFixedWidth(250)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         sections = [
-            ("Where to find us", [
-                ("Telegram Channel", "https://t.me/expanse_crypto"),
-                ("Telegram Chat", "https://t.me/expanse_chat"),
-                ("Support", "https://t.me/UnderMindExe"),
-                ("Buy Grass Faker", "https://t.me/grass_faker_bot")
-            ]),
-            ("Buy Proxies", [
-                ("Proxy Seller", "https://proxy-seller.com/?partner=SU9ID7IKFWSKOZ"),
-                ("Cheaper Proxy Seller", "https://t.me/node_proxy_bot")
-            ]),
-            ("Buy Emails", [
-                ("Firstmail", "https://firstmail.ltd/?ref=28236")
-            ]),
-            ("Server Rental", [
-                ("Appletec", "https://appletec.ru/?from=32434")
-            ])
+            (
+                "Where to find us",
+                [
+                    ("Telegram Channel", "https://t.me/expanse_crypto"),
+                    ("Telegram Chat", "https://t.me/expanse_chat"),
+                    ("Support", "https://t.me/UnderMindExe"),
+                    ("Buy Grass Faker", "https://t.me/grass_faker_bot"),
+                ],
+            ),
+            (
+                "Buy Proxies",
+                [
+                    (
+                        "Proxy Seller",
+                        "https://proxy-seller.com/?partner=SU9ID7IKFWSKOZ",
+                    ),
+                    ("Cheaper Proxy Seller", "https://t.me/node_proxy_bot"),
+                ],
+            ),
+            ("Buy Emails", [("Firstmail", "https://firstmail.ltd/?ref=28236")]),
+            ("Server Rental", [("Appletec", "https://appletec.ru/?from=32434")]),
         ]
 
         for title, links in sections:
             title_label = QLabel(title)
-            title_label.setStyleSheet("""
+            title_label.setStyleSheet(
+                """
                 font-weight: bold;
                 color: #0e639c;
                 padding: 10px;
                 border-bottom: 1px solid #3c3c3c;
-            """)
+            """
+            )
             layout.addWidget(title_label)
-            
+
             for link_text, url in links:
                 link = QPushButton(link_text)
-                link.setStyleSheet("""
+                link.setStyleSheet(
+                    """
                     text-align: left;
                     padding-left: 20px;
                     background-color: transparent;
                     border: none;
-                """)
+                """
+                )
                 link.clicked.connect(lambda checked, u=url: self.open_url(u))
                 layout.addWidget(link)
-            
+
             layout.addSpacing(5)
 
         layout.addStretch()
@@ -551,69 +626,78 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(widget)
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(20)
-        
+
         left_container = QWidget()
         left_layout = QVBoxLayout(left_container)
         left_layout.setAlignment(Qt.AlignCenter)
-        
+
         content_container = QWidget()
         content_container.setObjectName("parameterBlock")
         content_container.setFixedWidth(400)
         content_layout = QVBoxLayout(content_container)
         content_layout.setSpacing(20)
-        
+
         title = QLabel("GRASS FAKER\nAccount Manager")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 24px;
             font-weight: bold;
             color: #111111;
             margin-bottom: 20px;
             background-color: #F2FED1;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         content_layout.addWidget(title)
 
         links_container = QWidget()
         links_layout = QVBoxLayout(links_container)
         links_layout.setSpacing(15)
-        
+
         sections = [
-            ("Where to find us", [
-                ("Telegram Channel", "https://t.me/expanse_crypto"),
-                ("Telegram Chat", "https://t.me/expanse_chat"),
-                ("Support", "https://t.me/UnderMindExe"),
-                ("Buy Grass Faker", "https://t.me/grass_faker_bot")
-            ]),
-            ("Buy Proxies", [
-                ("Proxy Seller", "https://proxy-seller.com/?partner=SU9ID7IKFWSKOZ"),
-                ("Cheaper Proxy Seller", "https://t.me/node_proxy_bot")
-            ]),
-            ("Buy Emails", [
-                ("Firstmail", "https://firstmail.ltd/?ref=28236")
-            ]),
-            ("Server Rental", [
-                ("Appletec", "https://appletec.ru/?from=32434")
-            ])
+            (
+                "Where to find us",
+                [
+                    ("Telegram Channel", "https://t.me/expanse_crypto"),
+                    ("Telegram Chat", "https://t.me/expanse_chat"),
+                    ("Support", "https://t.me/UnderMindExe"),
+                    ("Buy Grass Faker", "https://t.me/grass_faker_bot"),
+                ],
+            ),
+            (
+                "Buy Proxies",
+                [
+                    (
+                        "Proxy Seller",
+                        "https://proxy-seller.com/?partner=SU9ID7IKFWSKOZ",
+                    ),
+                    ("Cheaper Proxy Seller", "https://t.me/node_proxy_bot"),
+                ],
+            ),
+            ("Buy Emails", [("Firstmail", "https://firstmail.ltd/?ref=28236")]),
+            ("Server Rental", [("Appletec", "https://appletec.ru/?from=32434")]),
         ]
 
         for title, links in sections:
             section_title = QLabel(title)
-            section_title.setStyleSheet("""
+            section_title.setStyleSheet(
+                """
                 font-weight: bold;
                 color: #111111;
                 font-size: 16px;
                 background-color: #F2FED1;
-            """)
+            """
+            )
             section_title.setAlignment(Qt.AlignCenter)
             links_layout.addWidget(section_title)
-            
+
             for link_text, url in links:
                 link_btn = QPushButton(link_text)
                 link_btn.setObjectName("linkButton")
                 link_btn.setCursor(Qt.PointingHandCursor)
                 link_btn.clicked.connect(lambda checked, u=url: self.open_url(u))
                 links_layout.addWidget(link_btn)
-            
+
             if sections.index((title, links)) < len(sections) - 1:
                 separator = QFrame()
                 separator.setFrameShape(QFrame.HLine)
@@ -622,67 +706,73 @@ class MainWindow(QMainWindow):
 
         content_layout.addWidget(links_container)
         left_layout.addWidget(content_container)
-        
+
         right_container = QWidget()
         right_layout = QVBoxLayout(right_container)
         right_layout.setAlignment(Qt.AlignCenter)
-        
+
         stats_container = QWidget()
         stats_container.setObjectName("parameterBlock")
         stats_container.setFixedWidth(400)
         self.stats_layout = QVBoxLayout(stats_container)
         self.stats_layout.setSpacing(20)
-        
+
         stats_title = QLabel("Statistics")
-        stats_title.setStyleSheet("""
+        stats_title.setStyleSheet(
+            """
             font-size: 24px;
             font-weight: bold;
             color: #111111;
             margin-bottom: 20px;
             background-color: #F2FED1;
-        """)
+        """
+        )
         stats_title.setAlignment(Qt.AlignCenter)
         self.stats_layout.addWidget(stats_title)
-        
+
         stats_data = [
             ("total", "Total Accounts:", str(self.total_accounts)),
             ("verified", "Verified Accounts:", str(self.verified_accounts)),
-            ("points", "Total Points:", str(self.total_points))
+            ("points", "Total Points:", str(self.total_points)),
         ]
-        
+
         for stat_id, label_text, value in stats_data:
             stat_container = QWidget()
             stat_layout = QHBoxLayout(stat_container)
             stat_layout.setSpacing(10)
-            
+
             label = QLabel(label_text)
-            label.setStyleSheet("""
+            label.setStyleSheet(
+                """
                 font-size: 16px;
                 font-weight: bold;
                 color: #111111;
                 background-color: #F2FED1;
-            """)
-            
+            """
+            )
+
             value_label = QLabel(value)
-            value_label.setStyleSheet("""
+            value_label.setStyleSheet(
+                """
                 font-size: 16px;
                 color: #111111;
                 background-color: #F2FED1;
-            """)
-            
+            """
+            )
+
             self.stats_labels[stat_id] = value_label
-            
+
             stat_layout.addWidget(label)
             stat_layout.addWidget(value_label)
             stat_layout.addStretch()
-            
+
             self.stats_layout.addWidget(stat_container)
-        
+
         right_layout.addWidget(stats_container)
-        
+
         layout.addWidget(left_container)
         layout.addWidget(right_container)
-        
+
         return widget
 
     def create_description_panel(self):
@@ -690,12 +780,13 @@ class MainWindow(QMainWindow):
         panel.setFixedWidth(300)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         lang_layout = QHBoxLayout()
         lang_layout.setAlignment(Qt.AlignRight)
-        
+
         self.lang_btn = QPushButton("ENG")
-        self.lang_btn.setStyleSheet("""
+        self.lang_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #ABF600;
                 color: #111111;
@@ -711,29 +802,34 @@ class MainWindow(QMainWindow):
             QPushButton:pressed {
                 background-color: #8CD600;
             }
-        """)
+        """
+        )
         self.lang_btn.clicked.connect(self.toggle_language)
         lang_layout.addWidget(self.lang_btn)
-        
+
         layout.addLayout(lang_layout)
-        
+
         title = QLabel("Description")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-weight: bold;
             color: #0e639c;
             padding: 10px;
             border-bottom: 1px solid #3c3c3c;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
         self.description_text = QTextEdit()
         self.description_text.setReadOnly(True)
-        self.description_text.setStyleSheet("""
+        self.description_text.setStyleSheet(
+            """
             background-color: #2d2d2d;
             border: none;
             padding: 10px;
-        """)
+        """
+        )
         layout.addWidget(self.description_text)
 
         return panel
@@ -743,48 +839,71 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
-        
+
         input_container = QWidget()
         input_layout = QVBoxLayout(input_container)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(5)
-        
+
         label = QLabel(placeholder)
 
         if field_id in DEFAULT_DESCRIPTION[self.current_language]:
             label.setToolTip(DEFAULT_DESCRIPTION[self.current_language][field_id])
         input_layout.addWidget(label)
-        
+
         input_field = QLineEdit()
         input_field.setPlaceholderText(placeholder)
 
         if field_id in DEFAULT_DESCRIPTION[self.current_language]:
             input_field.setToolTip(DEFAULT_DESCRIPTION[self.current_language][field_id])
-        
 
-        saved_value = self.settings.value(f'settings/{field_id}', '')
-        if field_id == 'threads' and not saved_value:
-            saved_value = '1'
+        self.settings.sync()
+        saved_value = self.settings.value(f"settings/{field_id}", "")
+        if field_id == "threads" and not saved_value:
+            saved_value = "1"
         input_field.setText(saved_value)
-        
-        input_field.textChanged.connect(lambda text, id=field_id: self.save_setting(id, text))
-        
-        self.input_fields[field_id] = {
-            'input': input_field,
-            'label': label,
-            'placeholder': placeholder
-        }
-        
+
+        input_field.textChanged.connect(
+            lambda text, id=field_id: self.save_setting(id, text)
+        )
+
+        # Если поле уже существует, добавляем новый экземпляр к списку
+        if field_id in self.input_fields:
+            if isinstance(self.input_fields[field_id], list):
+                self.input_fields[field_id].append(
+                    {
+                        "input": input_field,
+                        "label": label,
+                        "placeholder": placeholder,
+                    }
+                )
+            else:
+                # Преобразуем существующий словарь в список
+                self.input_fields[field_id] = [
+                    self.input_fields[field_id],
+                    {
+                        "input": input_field,
+                        "label": label,
+                        "placeholder": placeholder,
+                    },
+                ]
+        else:
+            self.input_fields[field_id] = {
+                "input": input_field,
+                "label": label,
+                "placeholder": placeholder,
+            }
+
         input_layout.addWidget(input_field)
-        
+
         layout.addWidget(input_container)
-        
-        if field_id in ['accounts', 'proxy', 'ref', 'file_name', 'imap_proxy']:
+
+        if field_id in ["accounts", "proxy", "ref", "file_name", "imap_proxy"]:
             file_btn = QPushButton("...")
             file_btn.setObjectName("fileButton")
             file_btn.clicked.connect(lambda: self.select_file(input_field))
             layout.addWidget(file_btn)
-        
+
         return container
 
     def select_file(self, input_field):
@@ -793,26 +912,29 @@ class MainWindow(QMainWindow):
             input_field.setText(file_name)
 
     def save_setting(self, field_id, value):
-        self.settings.setValue(f'settings/{field_id}', value)
+        self.settings.setValue(f"settings/{field_id}", value)
+        self.settings.sync()
 
     def create_screen_base(self, title_text, fields):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setAlignment(Qt.AlignTop)
-        
+
         params_container = QWidget()
         params_container.setObjectName("parameterBlock")
         params_layout = QVBoxLayout(params_container)
         params_layout.setSpacing(10)
-        
+
         title = QLabel(title_text)
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             font-size: 20px;
             font-weight: bold;
             color: #111111;
             margin-bottom: 20px;
             background-color: #F2FED1;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
         params_layout.addWidget(title)
 
@@ -821,7 +943,8 @@ class MainWindow(QMainWindow):
             params_layout.addWidget(input_field)
 
         start_btn = QPushButton("START")
-        start_btn.setStyleSheet("""
+        start_btn.setStyleSheet(
+            """
             background-color: #ABF600;
             color: #111111;
             border: 1px solid #000000;
@@ -829,10 +952,11 @@ class MainWindow(QMainWindow):
             border-radius: 4px;
             font-weight: bold;
             margin-top: 10px;
-        """)
+        """
+        )
         start_btn.clicked.connect(lambda: self.start_action(title_text.lower()))
         params_layout.addWidget(start_btn)
-        
+
         layout.addWidget(params_container)
         layout.addStretch()
         return widget
@@ -844,10 +968,8 @@ class MainWindow(QMainWindow):
             ("Forward mode", "forward_mode"),
             ("Proxy file path", "proxy"),
             ("Proxy rotate time (in seconds)", "rotate"),
-            ("Captcha service", "captcha_service"),
-            ("Captcha api key", "captcha_key"),
             ("Referrals file path", "ref"),
-            ("Number of threads", "threads")
+            ("Number of threads", "threads"),
         ]
         return self.create_screen_base("registration", fields)
 
@@ -857,9 +979,7 @@ class MainWindow(QMainWindow):
             ("Proxy rotate time (in seconds)", "rotate"),
             ("Proxy file for imap (Optional)", "imap_proxy"),
             ("Forward mode", "forward_mode"),
-            ("Captcha service", "captcha_service"),
-            ("Captcha api key", "captcha_key"),
-            ("Number of threads", "threads")
+            ("Number of threads", "threads"),
         ]
         return self.create_screen_base("verification", fields)
 
@@ -867,7 +987,7 @@ class MainWindow(QMainWindow):
         fields = [
             ("Proxy file path", "proxy"),
             ("Proxy rotate time (in seconds)", "rotate"),
-            ("Number of threads", "threads")
+            ("Number of threads", "threads"),
         ]
         return self.create_screen_base("update", fields)
 
@@ -875,7 +995,7 @@ class MainWindow(QMainWindow):
         fields = [
             ("File path", "file_name"),
             ("Separator", "separator"),
-            ("Format", "format")
+            ("Format", "format"),
         ]
         return self.create_screen_base("import", fields)
 
@@ -884,20 +1004,19 @@ class MainWindow(QMainWindow):
             ("File path", "file_name"),
             ("Export type", "export_type"),
             ("Separator", "separator"),
-            ("Format", "format")
+            ("Format", "format"),
         ]
         return self.create_screen_base("export", fields)
 
     def create_imap_screen(self):
-        fields = [
-            ("IMAP domain", "imap"),
-            ("Accounts file path", "accounts")
-        ]
+        fields = [("IMAP domain", "imap"), ("Accounts file path", "accounts")]
         return self.create_screen_base("imap", fields)
 
     def show_description(self, action):
         if action in DEFAULT_DESCRIPTION[self.current_language]:
-            self.description_text.setText(DEFAULT_DESCRIPTION[self.current_language][action])
+            self.description_text.setText(
+                DEFAULT_DESCRIPTION[self.current_language][action]
+            )
 
     def show_screen(self, screen_name):
         screen_map = {
@@ -907,38 +1026,42 @@ class MainWindow(QMainWindow):
             "update": self.update_screen,
             "import": self.import_screen,
             "export": self.export_screen,
-            "imap": self.imap_screen
+            "imap": self.imap_screen,
         }
-        
+
         if screen_name in screen_map:
             self.stacked_widget.setCurrentWidget(screen_map[screen_name])
 
     def start_action(self, action):
         values = {}
         for field_id, fields in self.input_fields.items():
-            value = fields['input'].text()
-            values[field_id] = value if value else DEFAULT_VALUES.get(field_id, '')
-        
+            # Обрабатываем как список, так и одиночный словарь
+            if isinstance(fields, list):
+                # Берем значение из первого экземпляра поля
+                value = fields[0]["input"].text()
+            else:
+                value = fields["input"].text()
+            # Используем точное значение из поля, даже если оно пустое
+            values[field_id] = value
+
         self.last_args = {
-            'action': action,
-            'accounts': values.get('accounts', DEFAULT_VALUES['accounts']),
-            'imap': values.get('imap', DEFAULT_VALUES['imap']),
-            'forward_mode': values.get('forward_mode', '') == 'True' if values.get('forward_mode') else DEFAULT_VALUES['forward_mode'],
-            'proxy': values.get('proxy', DEFAULT_VALUES['proxy']),
-            'rotate': int(values.get('rotate', DEFAULT_VALUES['rotate'])),
-            'captcha_service': values.get('captcha_service', DEFAULT_VALUES['captcha_service']),
-            'captcha_key': values.get('captcha_key', DEFAULT_VALUES['captcha_key']),
-            'ref': values.get('ref', DEFAULT_VALUES['ref']),
-            'threads': int(values.get('threads', DEFAULT_VALUES['threads'])),
-            'file_name': values.get('file_name', DEFAULT_VALUES['file_name']),
-            'separator': values.get('separator', DEFAULT_VALUES['separator']),
-            'format': values.get('format', DEFAULT_VALUES['format']),
-            'export_type': values.get('export_type', DEFAULT_VALUES['export_type']),
-            'imap_proxy': values.get('imap_proxy', DEFAULT_VALUES['imap_proxy'])
+            "action": action,
+            "accounts": values.get("accounts", ""),
+            "imap": values.get("imap", ""),
+            "forward_mode": values.get("forward_mode", "") == "True",
+            "proxy": values.get("proxy", ""),
+            "rotate": int(values.get("rotate", 0)) if values.get("rotate") else 0,
+            "ref": values.get("ref", ""),
+            "threads": int(values.get("threads", 1)) if values.get("threads") else 1,
+            "file_name": values.get("file_name", ""),
+            "separator": values.get("separator", ""),
+            "format": values.get("format", ""),
+            "export_type": values.get("export_type", ""),
+            "imap_proxy": values.get("imap_proxy", ""),
         }
-        
+
         self.last_action = action
-        
+
         self.close()
 
     def get_args(self):
@@ -946,50 +1069,65 @@ class MainWindow(QMainWindow):
 
     def open_url(self, url):
         import webbrowser
+
         webbrowser.open(url)
 
     def toggle_language(self):
-        self.current_language = 'en' if self.current_language == 'ru' else 'ru'
-        self.lang_btn.setText("RUS" if self.current_language == 'ru' else "ENG")
-        
+        self.current_language = "en" if self.current_language == "ru" else "ru"
+        self.lang_btn.setText("RUS" if self.current_language == "ru" else "ENG")
+
         for field_id, fields in self.input_fields.items():
             if field_id in DEFAULT_DESCRIPTION[self.current_language]:
                 tooltip = DEFAULT_DESCRIPTION[self.current_language][field_id]
-                fields['input'].setToolTip(tooltip)
-                fields['label'].setToolTip(tooltip)
-                # Update label text
-                fields['label'].setText(fields['placeholder'])
-        
+                # Обрабатываем как список, так и одиночный словарь
+                if isinstance(fields, list):
+                    for field in fields:
+                        field["input"].setToolTip(tooltip)
+                        field["label"].setToolTip(tooltip)
+                        field["label"].setText(field["placeholder"])
+                else:
+                    fields["input"].setToolTip(tooltip)
+                    fields["label"].setToolTip(tooltip)
+                    fields["label"].setText(fields["placeholder"])
+
         for i in range(self.nav_layout.count()):
             widget = self.nav_layout.itemAt(i).widget()
             if isinstance(widget, QPushButton):
                 text = widget.text().lower()
                 if text in DEFAULT_DESCRIPTION[self.current_language]:
                     widget.setToolTip(DEFAULT_DESCRIPTION[self.current_language][text])
-        
-        if hasattr(self, 'main_menu'):
+
+        if hasattr(self, "main_menu"):
             for widget in self.main_menu.findChildren(QPushButton):
                 if widget.objectName() == "linkButton":
                     continue
                 text = widget.text().lower()
                 if text in DEFAULT_DESCRIPTION[self.current_language]:
                     widget.setToolTip(DEFAULT_DESCRIPTION[self.current_language][text])
-        
-        for screen in [self.registration_screen, self.verification_screen, 
-                      self.update_screen, self.import_screen, 
-                      self.export_screen, self.imap_screen]:
+
+        for screen in [
+            self.registration_screen,
+            self.verification_screen,
+            self.update_screen,
+            self.import_screen,
+            self.export_screen,
+            self.imap_screen,
+        ]:
             if screen:
                 for widget in screen.findChildren(QPushButton):
                     if widget.objectName() == "fileButton":
                         continue
                     text = widget.text().lower()
                     if text in DEFAULT_DESCRIPTION[self.current_language]:
-                        widget.setToolTip(DEFAULT_DESCRIPTION[self.current_language][text])
+                        widget.setToolTip(
+                            DEFAULT_DESCRIPTION[self.current_language][text]
+                        )
+
 
 def run_ui():
     app = QApplication([])
     window = MainWindow()
-    
+
     window.show()
     app.exec()
     return window.get_args()

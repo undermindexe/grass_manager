@@ -1,4 +1,4 @@
-class Account():
+class Account:
     def __init__(self, ref_reg):
         self.ref_reg = ref_reg
         self.access_token = None

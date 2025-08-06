@@ -7,6 +7,15 @@ class Proxy:
         self.status = False
         self.last_ip = None
         self.last_touch = None
+        self.parse_proxy(proxy)
+
+    def parse_proxy(self, proxy: str):
+        try:
+            credential, endpoint = proxy.split('@')
+            self.login, self.password = credential.split(':')
+            self.host, self.port = endpoint.split(':')
+        except ValueError:
+            raise ValueError(f"Not valid format proxy: {proxy}")
 
 
 class ProxyManager:
