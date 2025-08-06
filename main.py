@@ -129,9 +129,6 @@ class Grass(Browser, Account, Wallet):
                 self.error = 0
             raise RegistrationError()
 
-        finally:
-            await self.session.close()
-
     @retry(
         stop=stop_after_attempt(5),
         retry=(retry_if_exception_type(LoginError)),
@@ -195,8 +192,6 @@ class Grass(Browser, Account, Wallet):
                 logger.info(f"{self.email} | New proxy: {self.proxy.link}")
                 self.error = 0
             raise LoginError("Login error")
-        finally:
-            await self.session.close()
 
     @retry(
         stop=stop_after_attempt(5),
@@ -244,8 +239,6 @@ class Grass(Browser, Account, Wallet):
                 logger.info(f"{self.email} | New proxy: {self.proxy.link}")
                 self.error = 0
             raise LoginError("Verify OTP error")
-        finally:
-            await self.session.close()
 
     @retry(
         stop=stop_after_attempt(5),
@@ -298,8 +291,6 @@ class Grass(Browser, Account, Wallet):
                 logger.info(f"{self.email} | New proxy: {self.proxy.link}")
                 self.error = 0
             raise LoginError("Setup password link error")
-        finally:
-            await self.session.close()
 
     @retry(
         stop=stop_after_attempt(5),
@@ -412,8 +403,6 @@ class Grass(Browser, Account, Wallet):
                 await self.swap_proxy()
                 self.error = 0
             raise UpdateError("Update info error")
-        finally:
-            await self.session.close()
 
     async def reward_claim(self):
         try:
@@ -491,8 +480,6 @@ class Grass(Browser, Account, Wallet):
                 await self.swap_proxy()
                 self.error = 0
             raise UpdateError("Reward claim error")
-        finally:
-            await self.session.close()
 
     async def save_wallet(self):
         try:
@@ -815,8 +802,6 @@ class Grass(Browser, Account, Wallet):
             logger.error(f"{self.email} | Error connect wallet {e}")
             await self.error_stat()
             raise ConnectWallet()
-        finally:
-            await self.session.close()
 
     @retry(
         stop=stop_after_attempt(5),
@@ -873,8 +858,6 @@ class Grass(Browser, Account, Wallet):
             logger.error(f"{self.email} | Error: {e}")
             await self.error_stat()
             raise ConnectWallet()
-        finally:
-            await self.session.close()
 
     async def get_email(self, request) -> str:
         if self.forward_email:
@@ -1093,15 +1076,10 @@ async def worker_reg(account: Grass):
                 else:
                     logger.error(f"{account.email} | Account maybe registered")
                 await account.proxymanager.drop(account.proxy)
-            if not account.session.closed:
-                await account.session.close()
     except RetryError:
         logger.error(f"{account.email} | Registration | Retry Error")
     except Exception as e:
         print(f"{e}")
-    finally:
-        if not account.session.closed:
-            await account.session.close()
 
 
 async def worker_update(account: Grass):

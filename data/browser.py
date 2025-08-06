@@ -10,7 +10,7 @@ class Browser:
     ref_reg: str
 
     def __init__(self, user_agent: str, proxy: str = None):
-        self.session = ClientSession(trust_env=True, connector=TCPConnector(ssl=False))
+        #self.session = ClientSession(trust_env=True, connector=TCPConnector(ssl=False))
         self.ip = None
         self.username = None
         self.proxy = None
