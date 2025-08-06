@@ -867,7 +867,6 @@ class MainWindow(QMainWindow):
             lambda text, id=field_id: self.save_setting(id, text)
         )
 
-        # Если поле уже существует, добавляем новый экземпляр к списку
         if field_id in self.input_fields:
             if isinstance(self.input_fields[field_id], list):
                 self.input_fields[field_id].append(
@@ -878,7 +877,6 @@ class MainWindow(QMainWindow):
                     }
                 )
             else:
-                # Преобразуем существующий словарь в список
                 self.input_fields[field_id] = [
                     self.input_fields[field_id],
                     {
@@ -1035,9 +1033,7 @@ class MainWindow(QMainWindow):
     def start_action(self, action):
         values = {}
         for field_id, fields in self.input_fields.items():
-            # Обрабатываем как список, так и одиночный словарь
             if isinstance(fields, list):
-                # Берем значение из первого экземпляра поля
                 value = fields[0]["input"].text()
             else:
                 value = fields["input"].text()
@@ -1079,7 +1075,6 @@ class MainWindow(QMainWindow):
         for field_id, fields in self.input_fields.items():
             if field_id in DEFAULT_DESCRIPTION[self.current_language]:
                 tooltip = DEFAULT_DESCRIPTION[self.current_language][field_id]
-                # Обрабатываем как список, так и одиночный словарь
                 if isinstance(fields, list):
                     for field in fields:
                         field["input"].setToolTip(tooltip)

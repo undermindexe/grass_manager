@@ -1030,7 +1030,7 @@ async def import_acc_from_db(proxy: ProxyManager):
     for i in result:
         acc = Grass(proxymanager=proxy)
         acc.__dict__.update(i)
-        acc.cookies = json.loads(i["cookies"])
+        acc.cookies = json.loads(i["cookies"]) if i["cookies"] else None
         if acc.user_agent == None:
             acc.user_agent = get_user_agent()
         accounts.append(acc)
