@@ -47,6 +47,7 @@ For the database:
 ### Compatibility
 
 The program **works on Windows 8+**
+To work, you additionally need to have an up-to-date Chrome browser installed using the standard path.
 
 ### Install
 
@@ -95,7 +96,8 @@ The program **works on Windows 8+**
 
 ### Совместимость
 
-Программа работает на0 **Windows 8+**
+Программа работает на **Windows 8+**
+Для работы дополнительно требуется установленный актуальный браузер Chrome по стандартному пути
 
 ### Установка
 
