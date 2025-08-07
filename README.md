@@ -46,7 +46,7 @@ For the database:
 
 ### Compatibility
 
-The program **works on Windows 8+**
+The program **works on Windows 8+** The system language must be English (For captcha)
 To work, you additionally need to have an up-to-date Chrome browser installed using the standard path.
 
 ### Install
@@ -96,7 +96,7 @@ To work, you additionally need to have an up-to-date Chrome browser installed us
 
 ### Совместимость
 
-Программа работает на **Windows 8+**
+Программа работает на **Windows 8+** Обязательно язык системы - английский (Для капчи)
 Для работы дополнительно требуется установленный актуальный браузер Chrome по стандартному пути
 
 ### Установка
