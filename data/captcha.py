@@ -2,9 +2,6 @@ import asyncio
 from playwright.async_api import async_playwright
 from .custom_logger import logger
 import subprocess
-import ctypes
-import random
-import os
 import json
 import tempfile
 import shutil

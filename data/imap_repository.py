@@ -3,8 +3,8 @@ import quopri
 import time
 import re
 
-from .custom_logger import logger
-from .imap import SocksIMAP4SSL
+from data.custom_logger import logger
+from data.imap import SocksIMAP4SSL
 
 
 class IMAPRepository:
@@ -80,10 +80,10 @@ class IMAPRepository:
                         logger.debug(f'{email} | Search mail in folder "{i}"')
                         mailbox.select(i)
                         status, search = mailbox.search("utf-8", request)
-                        if status == "OK" and search != [None]:
-                            # logger.debug(search)
+                        if status == "OK" and (search != [b''] and search != [None]):
+                            #logger.debug(search)
                             last_mail = get_last_mail(mailbox, msgs=search[0].split())
-                            # logger.debug(last_mail)
+                            #logger.debug(last_mail)
                             logger.info(f"{email} | Found message")
                             if "Your One Time Password for Grass is" in request:
                                 status, data = mailbox.fetch(
