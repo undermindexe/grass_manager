@@ -1058,11 +1058,18 @@ async def worker_reg(account: Grass):
                 logger.info(f"{account.email} | Account in the database | SKIP")
             else:
                 await account.get_proxy()
+
                 if await account.send_otp(action="register"):
                     otp_code = await account.get_email(
-                        f'SUBJECT "Your One Time Password for Grass is"'
+                        f'SUBJECT "Your One Time Password for Grass is "'
                     )
                     logger.info(f"{account.email} | Success get OTP Code: {otp_code}")
+
+                    if otp_code is None:
+                        logger.error(f"{account.email} | Error getting OTP Code, skip account")
+                        await account.proxymanager.drop(account.proxy)
+                        return False
+
                     if await account.verify_otp(otp_code):
                         await account.save_account()
                         await account.save_session()
@@ -1080,6 +1087,7 @@ async def worker_reg(account: Grass):
         logger.error(f"{account.email} | Registration | Retry Error")
     except Exception as e:
         print(f"{e}")
+
 
 
 async def worker_update(account: Grass):

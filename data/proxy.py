@@ -19,7 +19,7 @@ class Proxy:
 
 
 class ProxyManager:
-    def __init__(self, proxies: list, rotation: int):
+    def __init__(self, proxies: list, rotation: int) -> None:
         self.proxies = [Proxy(i) for i in proxies]
         self.rotation_time = rotation
     

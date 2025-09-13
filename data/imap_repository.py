@@ -77,15 +77,15 @@ class IMAPRepository:
                 attempt = 0
                 while attempt < 6:
                     for i in folders:
-                        logger.debug(f'{email} | Search mail in folder "{i}"')
+                        #logger.debug(f'{email} | Search mail in folder "{i}"')
                         mailbox.select(i)
                         status, search = mailbox.search("utf-8", request)
                         if status == "OK" and (search != [b''] and search != [None]):
-                            #logger.debug(search)
+                            #logger.debug(f"status: {status}, search: {search}")
                             last_mail = get_last_mail(mailbox, msgs=search[0].split())
                             #logger.debug(last_mail)
                             logger.info(f"{email} | Found message")
-                            if "Your One Time Password for Grass is" in request:
+                            if "Your One Time Password for Grass is " in request:
                                 status, data = mailbox.fetch(
                                     last_mail, "(BODY[HEADER.FIELDS (SUBJECT)])"
                                 )
@@ -165,3 +165,4 @@ def get_last_mail(mailbox: SocksIMAP4SSL, msgs: list):
 def parse_proxy(proxy: str):
     result = re.split(r"[:,@]", proxy)
     return result
+
