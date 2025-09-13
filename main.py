@@ -1061,7 +1061,7 @@ async def worker_reg(account: Grass):
 
                 if await account.send_otp(action="register"):
                     otp_code = await account.get_email(
-                        f'SUBJECT "Your One Time Password for Grass is "'
+                        f'SUBJECT "Your One Time Password for Grass is"'
                     )
                     logger.info(f"{account.email} | Success get OTP Code: {otp_code}")
 

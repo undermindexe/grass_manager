@@ -5,6 +5,7 @@ import re
 
 from data.custom_logger import logger
 from data.imap import SocksIMAP4SSL
+from data.exception import SearchError
 
 
 class IMAPRepository:
@@ -53,8 +54,8 @@ class IMAPRepository:
         Search mail in IMAP server
         """
 
-        error = 0
-        while error <= 5:
+        attempt = 0
+        while attempt <= 6:
             try:
                 logger.debug(f"{email} | {password} | {imap_server} | {proxy}")
 
@@ -74,37 +75,35 @@ class IMAPRepository:
                     ]
                 )
 
-                attempt = 0
-                while attempt < 6:
-                    for i in folders:
-                        #logger.debug(f'{email} | Search mail in folder "{i}"')
-                        mailbox.select(i)
-                        status, search = mailbox.search("utf-8", request)
-                        if status == "OK" and (search != [b''] and search != [None]):
-                            #logger.debug(f"status: {status}, search: {search}")
-                            last_mail = get_last_mail(mailbox, msgs=search[0].split())
-                            #logger.debug(last_mail)
-                            logger.info(f"{email} | Found message")
-                            if "Your One Time Password for Grass is " in request:
-                                status, data = mailbox.fetch(
-                                    last_mail, "(BODY[HEADER.FIELDS (SUBJECT)])"
-                                )
-                                result = quopri.decodestring(data[0][1]).decode("utf-8")
-                                result = result.strip()[-6:]
-                            else:
-                                status, data = mailbox.fetch(last_mail, "(BODY[TEXT])")
-                                result = quopri.decodestring(data[0][1]).decode("utf-8")
-                            mailbox.store(last_mail, "+FLAGS", "\\Deleted")
-                            mailbox.expunge()
-                            check_trash_grass(mailbox)
-                            return result
-                    attempt += 1
-                    time.sleep(10)
+                for i in folders:
+                    #logger.debug(f'{email} | Search mail in folder "{i}"')
+                    mailbox.select(i)
+                    status, search = mailbox.search("utf-8", request)
+                    #logger.debug(f"status: {status}, search: {search}")
+
+                    if status == "OK" and (search != [b''] and search != [None]):
+                        last_mail = get_last_mail(mailbox, msgs=search[0].split())
+                        #logger.debug(last_mail)
+                        logger.info(f"{email} | Found message")
+
+                        if "Your One Time Password for Grass is" in request:
+                            status, data = mailbox.fetch(
+                                last_mail, "(BODY[HEADER.FIELDS (SUBJECT)])"
+                            )
+                            result = quopri.decodestring(data[0][1]).decode("utf-8")
+                            result = result.strip()[-6:]
+                        else:
+                            status, data = mailbox.fetch(last_mail, "(BODY[TEXT])")
+                            result = quopri.decodestring(data[0][1]).decode("utf-8")
+                        #mailbox.store(last_mail, "+FLAGS", "\\Deleted")
+                        #mailbox.expunge()
+                        check_trash_grass(mailbox)
+                        return result
+                raise SearchError()
             except Exception as e:
-                error += 1
-                if error <= 5:
-                    logger.error(f"{email} | {e}")
-                    time.sleep(15)
+                attempt += 1
+                logger.error(f"{email} | Attempt: {attempt} | {e}")
+                time.sleep(10)
 
 
 def check_trash_grass(mailbox: SocksIMAP4SSL):
@@ -119,7 +118,7 @@ def check_trash_grass(mailbox: SocksIMAP4SSL):
         ]
 
         for folder in folders:
-            logger.debug(f"Checking folder: {folder}")
+            #logger.debug(f"Checking folder: {folder}")
             mailbox.select(folder)
 
             status, search = mailbox.search("utf-8", 'FROM "Grass Foundation"')
@@ -166,3 +165,5 @@ def parse_proxy(proxy: str):
     result = re.split(r"[:,@]", proxy)
     return result
 
+if __name__ == "__main__":
+    pass

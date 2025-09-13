@@ -16,3 +16,6 @@ class ProxyError(Exception):
 
 class UpdateError(Exception):
     pass
+
+class SearchError(Exception):
+    pass
