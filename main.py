@@ -937,7 +937,7 @@ class Grass(Browser, Account, Wallet):
                 if self.seed != None:
                     await self.send_wallet_verification()
                     token = await self.email_verification(
-                        request='Verify Your Wallet Address for Grass'
+                        request='Verify Your Wallet Address'
                     )
                     await self.click_wallet_verification(token)
                 else:
@@ -946,7 +946,7 @@ class Grass(Browser, Account, Wallet):
                         await self.save_wallet()
                         await self.send_wallet_verification()
                         token = await self.email_verification(
-                            request='Verify Your Wallet Address for Grass'
+                            request='Verify Your Wallet Address'
                         )
                         await self.click_wallet_verification(token)
         except Exception as e:
