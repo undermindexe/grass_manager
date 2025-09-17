@@ -596,7 +596,7 @@ class Grass(Browser, Account, Wallet):
                         if await self.login():
                             return True
                     otp_code = await self.get_email(
-                        f'SUBJECT "Your One Time Password for Grass is"'
+                        'Your One Time Password for Grass is'
                     )
                     if not isinstance(otp_code, str):
                         logger.error(f"{self.email} | Error get OTP Code: {otp_code}")
@@ -882,27 +882,27 @@ class Grass(Browser, Account, Wallet):
             )
         return email
 
-    async def email_verification(self, subject):
+    async def email_verification(self, request):
         try:
-            if subject == '"Verify Your Email for Grass"':
+            if request == 'Verify Your Email for Grass':
                 await self.send_email_verification()
-                email = await self.get_email(f"SUBJECT {subject}")
+                email = await self.get_email(request)
                 token = email.split("token=")[1].split("/")[0]
-                logger.debug(f"{self.email} | Token verified email: {token}")
+                #logger.debug(f"{self.email} | Token verified email: {token}")
                 if token and await self.click_email_verification(token):
                     self.verified = True
                     return True
                 else:
                     return False
-            elif subject == '"Verify Your Wallet Address for Grass"':
-                email = await self.get_email(f"SUBJECT {subject}")
+            elif request == 'Verify Your Wallet Address for Grass':
+                email = await self.get_email(request)
                 token = email.split("token=")[1].split("/")[0]
-                logger.debug(f"{self.email} | Token verified wallet: {token}")
+                #logger.debug(f"{self.email} | Token verified wallet: {token}")
                 return token
-            elif subject == '"Set Password"':
-                email = await self.get_email(f"SUBJECT {subject}")
+            elif request == 'Set Password':
+                email = await self.get_email(request)
                 token = email.split("token=")[1].split("/")[0]
-                logger.debug(f"{self.email} | Token setup password: {token}")
+                #logger.debug(f"{self.email} | Token setup password: {token}")
                 return token
         except Exception as e:
             logger.error(f"{self.email} | Error verification {e}")
@@ -932,7 +932,7 @@ class Grass(Browser, Account, Wallet):
                 if self.seed != None:
                     await self.send_wallet_verification()
                     token = await self.email_verification(
-                        subject='"Verify Your Wallet Address for Grass"'
+                        request='Verify Your Wallet Address for Grass'
                     )
                     await self.click_wallet_verification(token)
                 else:
@@ -941,7 +941,7 @@ class Grass(Browser, Account, Wallet):
                         await self.save_wallet()
                         await self.send_wallet_verification()
                         token = await self.email_verification(
-                            subject='"Verify Your Wallet Address for Grass"'
+                            request='Verify Your Wallet Address for Grass'
                         )
                         await self.click_wallet_verification(token)
         except Exception as e:
@@ -1061,7 +1061,7 @@ async def worker_reg(account: Grass):
 
                 if await account.send_otp(action="register"):
                     otp_code = await account.get_email(
-                        f'SUBJECT "Your One Time Password for Grass is"'
+                        'Your One Time Password for Grass is'
                     )
                     logger.info(f"{account.email} | Success get OTP Code: {otp_code}")
 
@@ -1075,7 +1075,7 @@ async def worker_reg(account: Grass):
                         await account.save_session()
                         if await account.set_password():
                             token = await account.email_verification(
-                                subject='"Set Password"'
+                                request='Set Password'
                             )
                             if await account.reset_password(token):
                                 await account.save_password()
@@ -1129,14 +1129,14 @@ async def worker_verif(account: Grass):
                         logger.info(f"{account.email} | Start setup password")
                         if await account.set_password():
                             token = await account.email_verification(
-                                subject='"Set Password"'
+                                request='Set Password'
                             )
                             if await account.reset_password(token):
                                 await account.save_password()
                             await account.update_info()
                     if account.verified == False:
                         await account.email_verification(
-                            subject='"Verify Your Email for Grass"'
+                            request='Verify Your Email for Grass'
                         )
                     if account.verified == True and account.wallet_verified == False:
                         await account.wallet_verification()

@@ -42,6 +42,17 @@ class IMAPRepository:
         return mailbox
 
     @staticmethod
+    def convert_request(req: str):
+        req = [i for i in req.split()]
+        result = []
+        for i in req:
+            result.append('HEADER')
+            result.append('SUBJECT')
+            result.append(i)
+        result = tuple(result)
+        return result
+
+    @staticmethod
     def search_mail(
         request: str,
         email: str,
@@ -76,9 +87,9 @@ class IMAPRepository:
                 )
 
                 for i in folders:
-                    #logger.debug(f'{email} | Search mail in folder "{i}"')
+                    logger.debug(f'{email} | Search mail in folder "{i}"')
                     mailbox.select(i)
-                    status, search = mailbox.search("utf-8", request)
+                    status, search = mailbox.search("utf8", *IMAPRepository.convert_request(request))
                     #logger.debug(f"status: {status}, search: {search}")
 
                     if status == "OK" and (search != [b''] and search != [None]):
@@ -95,9 +106,9 @@ class IMAPRepository:
                         else:
                             status, data = mailbox.fetch(last_mail, "(BODY[TEXT])")
                             result = quopri.decodestring(data[0][1]).decode("utf-8")
-                        #mailbox.store(last_mail, "+FLAGS", "\\Deleted")
-                        #mailbox.expunge()
-                        check_trash_grass(mailbox)
+                        mailbox.store(last_mail, "+FLAGS", "\\Deleted")
+                        mailbox.expunge()
+                        #check_trash_grass(mailbox)
                         return result
                 raise SearchError()
             except Exception as e:
@@ -166,4 +177,5 @@ def parse_proxy(proxy: str):
     return result
 
 if __name__ == "__main__":
+
     pass
