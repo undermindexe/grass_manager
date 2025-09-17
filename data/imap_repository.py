@@ -89,7 +89,8 @@ class IMAPRepository:
                 for i in folders:
                     logger.debug(f'{email} | Search mail in folder "{i}"')
                     mailbox.select(i)
-                    status, search = mailbox.search("utf8", *IMAPRepository.convert_request(request))
+                    params = IMAPRepository.convert_request(request)
+                    status, search = mailbox.search("utf8", *params)
                     #logger.debug(f"status: {status}, search: {search}")
 
                     if status == "OK" and (search != [b''] and search != [None]):

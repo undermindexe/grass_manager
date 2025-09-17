@@ -894,11 +894,16 @@ class Grass(Browser, Account, Wallet):
                     return True
                 else:
                     return False
-            elif request == 'Verify Your Wallet Address for Grass':
+            elif request == 'Verify Your Wallet Address':
                 email = await self.get_email(request)
-                token = email.split("token=")[1].split("/")[0]
-                #logger.debug(f"{self.email} | Token verified wallet: {token}")
-                return token
+                if email:
+                    token = email.split("token=")[1].split("/")[0]
+                    #logger.debug(f"{self.email} | Token verified wallet: {token}")
+                    return token
+                else:
+                    logger.error(f"{self.email} | Not found email")
+                    raise TypeError
+
             elif request == 'Set Password':
                 email = await self.get_email(request)
                 token = email.split("token=")[1].split("/")[0]
